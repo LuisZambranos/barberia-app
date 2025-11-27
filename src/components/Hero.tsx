@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 
 const Hero = () => {
@@ -42,7 +41,7 @@ const Hero = () => {
         <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold text-white mb-6 leading-tight tracking-tight">
           TU MEJOR <br />
           {/* Texto con Gradiente Dorado */}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-yellow-200 to-gold">
+          <span className="text-transparent bg-clip-text bg-linear-to-r from-gold via-yellow-200 to-gold">
             VERSIÓN
           </span>
         </h1>
@@ -63,7 +62,7 @@ const Hero = () => {
           </Link>
           
           {/* Botón Secundario (Outline) */}
-          <a 
+          <a  
             href="#servicios" 
             className="border border-white/20 hover:border-gold hover:text-gold text-white font-bold py-4 px-10 rounded-sm transition-all uppercase tracking-wider backdrop-blur-sm"
           >

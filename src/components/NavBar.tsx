@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const Navbar = () => {
@@ -10,7 +10,7 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-20">
           
           {/* LOGO (Texto o Imagen) */}
-          <div className="flex-shrink-0 flex items-center">
+          <div className="shrink-0 flex items-center">
             <Link to="/" className="text-2xl font-bold tracking-widest text-white">
               LA <span className="text-gold">PIEDAD</span>
             </Link>
