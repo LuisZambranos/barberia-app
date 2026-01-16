@@ -36,7 +36,7 @@ const Services = () => {
         {/* TÍTULO DE SECCIÓN */}
         <div className="text-center mb-12">
           <h2 className="text-gold font-bold tracking-[0.2em] uppercase text-sm mb-2">
-            NUESTRO MENÚ
+            NUESTRO SERVICIOS
           </h2>
           <h3 className="text-3xl font-bold text-white">
             Elegancia & Estilo

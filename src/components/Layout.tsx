@@ -14,7 +14,7 @@ const Layout = () => {
             </main>
 
             {/* Footer */}
-            <footer className="bg-bg-card text-txt-muted text-center p-4 text-sm  border-t border-white/10">
+            <footer className="bg-bg-main text-txt-muted text-center p-4 text-sm border-t border-white/10">
                 © 2025 Excalix Code. All rights reserved.
             </footer>
         </div>

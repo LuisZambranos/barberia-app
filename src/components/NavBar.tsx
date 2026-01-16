@@ -12,7 +12,7 @@ const Navbar = () => {
           {/* LOGO (Texto o Imagen) */}
           <div className="shrink-0 flex items-center">
             <Link to="/" className="text-2xl font-bold tracking-widest text-white">
-              LA <span className="text-gold">PIEDAD</span>
+              BARBER <span className="text-gold">SHOP</span>
             </Link>
           </div>
 
