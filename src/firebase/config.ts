@@ -1,19 +1,21 @@
-// src/firebase/config.ts
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
+// Usamos import.meta.env para leer las variables de entorno en Vite
 const firebaseConfig = {
-  apiKey: "AIzaSyDQFGX0i0M3HLqe-WBFM9d-CTGX9zSH_bs",
-  authDomain: "barbershop-1f2fe.firebaseapp.com",
-  projectId: "barbershop-1f2fe",
-  storageBucket: "barbershop-1f2fe.firebasestorage.app",
-  messagingSenderId: "360306849794",
-  appId: "1:360306849794:web:15fd03aa81f7d5f95c8f1b",
-  measurementId: "G-Q2TCSMBPJC"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Inicializar solo la App y Firestore
+// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
 
-// Nota: Hemos quitado 'auth' temporalmente para aislar el error de conexión.
+// Inicializar servicios
+export const db = getFirestore(app);
+export const auth = getAuth(app);
