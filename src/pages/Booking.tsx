@@ -118,22 +118,47 @@ const Booking = () => {
       <div className="max-w-5xl mx-auto">
         
         {/* ENCABEZADO DE PASOS */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-tight">
-            RESERVA TU <span className="text-gold">TURNO</span>
+        <div className="text-center mb-8 px-4">
+          <h1 className="text-2xl md:text-5xl font-extrabold text-white mb-6 tracking-tight uppercase">
+            Reserva tu <span className="text-gold">Turno</span>
           </h1>
-          <div className="flex justify-center items-center gap-4 text-xs font-bold uppercase tracking-widest text-txt-secondary">
-            <span className={step === 1 ? "text-gold" : ""}>01 Servicio</span>
-            <div className="h-px w-8 bg-white/10"></div>
-            <span className={step === 2 ? "text-gold" : ""}>02 Barbero</span>
-            <div className="h-px w-8 bg-white/10"></div>
-            <span className={step === 3 ? "text-gold" : ""}>03 Fecha & Hora</span>
-            
-            <div className="h-px w-8 bg-white/10"></div>
-            <span className={step === 4 ? "text-gold" : ""}>04 Tus datos</span>
-            
-            <div className="h-px w-8 bg-white/10"></div>
-            <span className={step === 5 ? "text-gold" : ""}>05 Confirmacion de Pago</span>
+
+          {/* Contenedor con Scroll Horizontal */}
+          <div 
+            id="stepper-container"
+            className="flex items-center gap-4 overflow-x-auto pb-4 md:pb-2 md:justify-center whitespace-nowrap scrollbar-hide scroll-smooth"
+          >
+            {[
+              { id: 1, label: "01 Servicio" },
+              { id: 2, label: "02 Barbero" },
+              { id: 3, label: "03 Fecha & Hora" },
+              { id: 4, label: "04 Tus Datos" },
+              { id: 5, label: "05 Confirmación" }
+            ].map((s) => {
+              // LÓGICA DE VALIDACIÓN: ¿Puede el usuario hacer clic aquí?
+              const isAvailable = 
+                (s.id === 1) ||
+                (s.id === 2 && selectedService) ||
+                (s.id === 3 && selectedService && selectedBarber) ||
+                (s.id === 4 && selectedService && selectedBarber && selectedDate && selectedTime) ||
+                (s.id === 5 && step === 5);
+
+              return (
+                <div 
+                  key={s.id}
+                  id={`step-link-${s.id}`} // ID para el auto-focus
+                  onClick={() => isAvailable && setStep(s.id)}
+                  className={`flex items-center gap-3 flex-shrink-0 transition-all duration-300 
+                    ${isAvailable ? "cursor-pointer opacity-100" : "cursor-not-allowed opacity-30"}`}
+                >
+                  <span className={`text-[10px] md:text-xs font-bold uppercase tracking-widest 
+                    ${step === s.id ? "text-gold scale-110" : "text-txt-secondary"}`}>
+                    {s.label}
+                  </span>
+                  {s.id !== 5 && <div className="h-px w-6 bg-white/10"></div>}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -211,14 +236,17 @@ const Booking = () => {
                 </div>
               ))}
             </div>
-            <div className="flex gap-4 max-w-lg mx-auto">
-              <button onClick={() => setStep(1)} className="w-1/3 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all">Atrás</button>
+            <div className="flex flex-col sm:flex-row gap-4 border-t border-white/10 mt-6 pt-6">
               <button 
                 onClick={() => setStep(3)} 
                 disabled={!selectedBarber} 
-                className="w-2/3 bg-gold text-bg-main p-4 rounded-sm font-black text-sm uppercase tracking-[0.2em] disabled:opacity-30 shadow-lg shadow-gold/20"
+                className="sm:w-3/4 bg-gold text-bg-main p-4 rounded-sm font-black text-sm uppercase tracking-[0.2em] disabled:opacity-30 shadow-xl shadow-gold/20 hover:bg-gold-hover transition-all"
               >
                 Ver Agenda
+              </button>
+              <button onClick={() => setStep(1)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
+              >
+                Regresar
               </button>
             </div>
           </div>
@@ -301,11 +329,12 @@ const Booking = () => {
                 className="sm:w-3/4 bg-gold text-bg-main p-4 rounded-sm font-black text-sm uppercase tracking-[0.2em] disabled:opacity-30 shadow-xl shadow-gold/20 hover:bg-gold-hover transition-all"
                 onClick={() => setStep(4)}
               >
-                Confirmar y Pagar Reserva
+                Ingresar Datos
               </button>
               <button onClick={() => setStep(2)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
               >
-                Regresar</button>
+                Regresar
+              </button>
             </div>
           </div>
         )}
@@ -328,7 +357,7 @@ const Booking = () => {
                 <input required type="email" value={clientData.email} onChange={(e) => setClientData({...clientData, email: e.target.value})} className="w-full bg-white/5 border border-white/10 p-4 rounded-sm focus:border-gold outline-none transition-all" placeholder="correo@ejemplo.com" />
               </div>
 
-              <div className="pt-6 border-t border-white/10">
+              <div className="flex flex-col sm:flex-row gap-4 border-t border-white/10 mt-6 pt-6">
                 <button 
                   type="submit"
                   disabled={isSubmitting}
@@ -336,6 +365,9 @@ const Booking = () => {
                 >
                   {isSubmitting ? "Procesando..." : "Confirmar Reserva"}
                 </button>
+                <button onClick={() => setStep(3)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
+              >
+                Regresar</button>
               </div>
             </form>
           </div>

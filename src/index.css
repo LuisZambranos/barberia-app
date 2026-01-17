@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* DEFINICIÓN DEL TEMA (THEME) - Estilo "La Piedad" Premium */
+/* DEFINICIÓN DEL TEMA (THEME) - Estilo Barber Shop  */
 :root {
   /* NUEVO FONDO: "Slate 950" 
      Es un azul grisáceo muy profundo. Se ve mucho más elegante que el negro plano.
@@ -64,4 +64,13 @@ body {
   --color-txt-muted: var(--color-text-secondary);
   --color-gold: var(--color-accent);
   --color-gold-hover: var(--color-accent-hover);
+}
+
+@layer base {
+
+  @media (min-width: 1280px) {
+    html {
+      font-size: 14.5px; /* Para pantallas muy grandes vuelve a la normalidad */
+    }
+  }
 }
