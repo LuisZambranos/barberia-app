@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Booking from "./pages/Booking";
-import Login from "./pages/Login"; // <--- 1. Importa el componente
+import Login from "./pages/Login"; 
 
 function App() {
   return (
@@ -10,9 +10,10 @@ function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />}/>
+            {/* 1.book */}
             <Route path="book" element={<Booking />}/>
             
-            {/* 2. Agrega la ruta para el login */}
+            {/* 2.login */}
             <Route path="login" element={<Login />}/> 
 
           </Route>

@@ -23,11 +23,11 @@ const Login = () => {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // Guardamos en la colección 'usuarios' como en el de fletes
-        await setDoc(doc(db, "usuarios", user.uid), {
+        // Guardamos en la colección 'users' 
+        await setDoc(doc(db, "user", user.uid), {
           uid: user.uid,
           email: user.email,
-          rol: "cliente", // Rol por defecto
+          rol: "client", // Rol por defecto
           createdAt: new Date().toISOString()
         });
         
@@ -37,7 +37,7 @@ const Login = () => {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        const docRef = doc(db, "usuarios", user.uid);
+        const docRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
@@ -74,7 +74,7 @@ const Login = () => {
           <h2 className="text-4xl font-black text-white uppercase tracking-tighter mb-2 italic">
             BARBER <span className="text-[#D4AF37]">SHOP</span>
           </h2>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.4em]">Acceso de Usuarios</p>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.4em]">Acceso de usuarios</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
