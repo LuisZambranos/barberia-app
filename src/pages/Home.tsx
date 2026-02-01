@@ -1,7 +1,7 @@
 import Hero from '../components/Hero'; // Importamos el componente que acabamos de crear
 import Services from '../components/Services';
 import Team from '../components/Team';
-// import ServicesCarousel from '../components/ServicesCarousel';
+import LocationSection from '../components/LocationSection';
 
 const Home = () => {
   return (
@@ -16,6 +16,9 @@ const Home = () => {
 
       {/* 3 Sección Equipo (Contenido) */}
       <Team />
+
+      {/* 4 Sección Ubicación (Contenido) */} 
+      <LocationSection />
     </div>
   );
 };

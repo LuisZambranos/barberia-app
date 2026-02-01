@@ -33,24 +33,18 @@ const Navbar = () => {
             <Link to="/" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Inicio</Link>
             <a href="#servicios" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Servicios</a>
             <a href="#barberos" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Equipo</a>
-            {/* REEMPLAZAR EL LINK DE LOGIN POR ESTO: */}
+            <a href="#ubicacion" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Ubicacion</a>
+            {/*LINK DE LOGIN */}
             {user ? (
               <button 
                 onClick={handleLogout} 
                 className="flex flex-col items-end text-right group cursor-pointer"
               >
-                {/* CORRECCIÓN: Usamos '&&' en vez de 'if' */}
-                {role === 'client' && (
-                  <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-widest group-hover:text-white transition-colors">
-                    Cliente
-                  </span>
-                )}
-
-                {/* OPCIONAL: Si quieres que también salga cuando es Admin, usa esto en su lugar:
+                {/* OPCIONAL: Si quieres que también salga cuando es Admin, usa esto en su lugar:*/}
                 <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-widest group-hover:text-white transition-colors">
                   {role === 'client' ? 'Cliente' : role}
                 </span> 
-                */}
+                
                 
                 <span className="text-white text-xs font-medium group-hover:text-red-400 transition-colors">
                   {user.email?.split('@')[0]} <span className="text-[9px] opacity-50 ml-1">(Salir)</span>

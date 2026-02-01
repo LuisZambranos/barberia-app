@@ -5,7 +5,7 @@ const Hero = () => {
     // CONTENEDOR PRINCIPAL
     // h-screen: Ocupa toda la altura de la ventana (100vh).
     // relative: Necesario para que los hijos con "absolute" se posicionen respecto a este bloque.
-    <section className="relative h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative h-screen flex items-center justify-center overflow-hidden" id='hero'>
       
       {/* 1. IMAGEN DE FONDO
           He cambiado el link por uno más estable de una barbería oscura.
@@ -105,6 +105,9 @@ const Hero = () => {
             </div>
           </div>
         </div>
+
+        {/* SECCIÓN DE LOCACIÓN */}
+        {/* <LocationSection /> */}
 
         </div>
     </section>
