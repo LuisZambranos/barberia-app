@@ -1,26 +1,26 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
-//import our componets
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Booking from "./pages/Booking";
+import Login from "./pages/Login"; // <--- 1. Importa el componente
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Parent Route: Uses the layout */}
-        <Route path="/" element={<Layout />}>
-          
-          {/* Index Route: This loads when the path is exactly "/" */}
-          <Route index element={<Home />}/>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Home />}/>
+            <Route path="book" element={<Booking />}/>
+            
+            {/* 2. Agrega la ruta para el login */}
+            <Route path="login" element={<Login />}/> 
 
-          {/* Booking Route: Loads when path is "/book" */}
-          <Route path="book" element={<Booking />}/>
-
-        </Route>
-      </Routes>
-    </BrowserRouter>
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
 

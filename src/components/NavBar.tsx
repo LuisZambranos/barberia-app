@@ -21,6 +21,7 @@ const Navbar = () => {
             <Link to="/" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Inicio</Link>
             <a href="#servicios" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Servicios</a>
             <a href="#barberos" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Equipo</a>
+            <Link to="/login" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Iniciar Sesion</Link>
             
             {/* CTA PRINCIPAL */}
             <Link 

@@ -148,7 +148,7 @@ const Booking = () => {
                   key={s.id}
                   id={`step-link-${s.id}`} // ID para el auto-focus
                   onClick={() => isAvailable && setStep(s.id)}
-                  className={`flex items-center gap-3 flex-shrink-0 transition-all duration-300 
+                  className={`flex items-center gap-3 shrink-0 transition-all duration-300 
                     ${isAvailable ? "cursor-pointer opacity-100" : "cursor-not-allowed opacity-30"}`}
                 >
                   <span className={`text-[10px] md:text-xs font-bold uppercase tracking-widest 
