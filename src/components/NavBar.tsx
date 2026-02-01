@@ -1,8 +1,20 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from "../context/AuthContext";
+import { signOut } from "firebase/auth";
+import { auth } from "../firebase/config";
+import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false); // Estado para menú móvil
+
+  const { user, role } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate("/");
+  };
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-bg-main/95 backdrop-blur-sm border-b border-white/10 shadow-lg">
@@ -21,7 +33,34 @@ const Navbar = () => {
             <Link to="/" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Inicio</Link>
             <a href="#servicios" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Servicios</a>
             <a href="#barberos" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Equipo</a>
-            <Link to="/login" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Iniciar Sesion</Link>
+            {/* REEMPLAZAR EL LINK DE LOGIN POR ESTO: */}
+            {user ? (
+              <button 
+                onClick={handleLogout} 
+                className="flex flex-col items-end text-right group cursor-pointer"
+              >
+                {/* CORRECCIÓN: Usamos '&&' en vez de 'if' */}
+                {role === 'client' && (
+                  <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-widest group-hover:text-white transition-colors">
+                    Cliente
+                  </span>
+                )}
+
+                {/* OPCIONAL: Si quieres que también salga cuando es Admin, usa esto en su lugar:
+                <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-widest group-hover:text-white transition-colors">
+                  {role === 'client' ? 'Cliente' : role}
+                </span> 
+                */}
+                
+                <span className="text-white text-xs font-medium group-hover:text-red-400 transition-colors">
+                  {user.email?.split('@')[0]} <span className="text-[9px] opacity-50 ml-1">(Salir)</span>
+                </span>
+              </button>
+            ) : (
+              <Link to="/login" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">
+                Iniciar Sesion
+              </Link>
+            )}
             
             {/* CTA PRINCIPAL */}
             <Link 
@@ -64,6 +103,13 @@ const Navbar = () => {
             <Link to="/book" className="mt-4 w-full text-center bg-gold text-black px-4 py-3 rounded-sm font-bold" onClick={() => setIsOpen(false)}>
               RESERVAR AHORA
             </Link>
+            {user ? (
+              <button onClick={() => { handleLogout(); setIsOpen(false); }} className="text-red-400 text-xs uppercase font-bold mt-4 border-t border-white/10 pt-4 w-full text-center">
+                Cerrar Sesión ({user.email?.split('@')[0]})
+              </button>
+            ) : (
+                <Link to="/login" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={() => setIsOpen(false)}>INICIAR SESION</Link>
+            )}
           </div>
         </div>
       )}
