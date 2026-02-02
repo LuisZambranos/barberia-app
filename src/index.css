@@ -74,3 +74,34 @@ body {
     }
   }
 }
+
+/* --- ESTILOS DE NOTIFICACIONES --- */
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-progress-shrink {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-toast-in {
+  animation: toast-slide-in 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.animate-progress-shrink {
+  /* La duración debe ser la misma que el timeout del código (3000ms) */
+  animation: toast-progress-shrink 3000ms linear forwards;
+}

@@ -34,6 +34,18 @@
     animation: logo-spin infinite 20s linear;
   }
 }
+/* --- ANIMACIONES PARA TOASTS --- */
+
+
+
+.animate-toast-in {
+  animation: toast-slide-in 0.5s cubic-bezier(0.17, 0.88, 0.32, 1.28) forwards;
+}
+
+.animate-progress-shrink {
+  /* La duración se controla desde el componente para que coincida con el timeout */
+  animation: toast-progress-shrink linear forwards;
+}
 
 .card {
   padding: 2em;
