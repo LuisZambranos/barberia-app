@@ -8,7 +8,7 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-// URL de un sonido de notificación (puedes cambiarlo por un archivo local luego)
+// Sonido de notificación premium (Estilo Apple/Moderno)
 const NOTIFICATION_SOUND = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
@@ -16,30 +16,33 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 
   const playNotificationSound = () => {
     const audio = new Audio(NOTIFICATION_SOUND);
-    audio.volume = 0.4; // Volumen suave para no asustar al cliente
-    audio.play().catch(err => console.log("El navegador bloqueó el audio hasta que haya interacción:", err));
+    audio.volume = 0.4; // Volumen balanceado
+    audio.play().catch(err => {
+      // Los navegadores bloquean audio automático sin interacción previa del usuario
+      console.log("Esperando interacción del usuario para activar sonidos:", err);
+    });
   };
 
   const showToast = (message: string, type: ToastType = 'success') => {
-    // Reiniciamos para permitir múltiples notificaciones seguidas
+    // Reiniciamos el estado para permitir notificaciones consecutivas
     setToast(null);
     
-    // Pequeño delay para reiniciar animaciones y disparar el sonido
+    // Pequeño delay para asegurar que el DOM detecte el cambio y reinicie animaciones
     setTimeout(() => {
       setToast({ message, type });
       playNotificationSound();
       
-      // El toast dura 3 segundos
+      // El toast desaparece a los 3 segundos
       setTimeout(() => setToast(null), 3000);
     }, 10);
   };
 
   return (
     <ToastContext.Provider value={{ showToast }}>
-      {/* Estilos para animaciones de alto impacto */}
+      {/* Estilos para animaciones de entrada y barra de progreso */}
       <style>{`
         @keyframes toast-slide-in {
-          from { transform: translateX(110%); opacity: 0; }
+          from { transform: translateX(120%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
         }
         @keyframes toast-progress-shrink {
@@ -63,13 +66,13 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
             min-w-[500px] flex items-center gap-8 backdrop-blur-xl bg-opacity-95
             relative overflow-hidden rounded-sm
           `}>
-            {/* Barra lateral indicadora */}
+            {/* Indicador lateral de color (Dorado para éxito, Rojo para error) */}
             <div className={`
               absolute left-0 top-0 h-full w-2
               ${toast.type === 'success' ? 'bg-[#D4AF37]' : 'bg-red-600'}
             `}></div>
 
-            {/* Icono animado */}
+            {/* Icono de notificación grande */}
             <div className={`
               p-4 rounded-full shrink-0
               ${toast.type === 'success' ? 'bg-[#D4AF37]/10' : 'bg-red-500/10'}
@@ -94,6 +97,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
               </h4>
             </div>
 
+            {/* Botón de cierre manual */}
             <button 
               onClick={() => setToast(null)}
               className="text-slate-600 hover:text-white transition-colors p-2"
@@ -103,7 +107,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
               </svg>
             </button>
 
-            {/* BARRA DE PROGRESO QUE SE CONSUME */}
+            {/* Barra de progreso inferior que se consume (3s) */}
             <div 
               className={`
                 absolute bottom-0 left-0 h-[5px] animate-progress-shrink
