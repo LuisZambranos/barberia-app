@@ -8,7 +8,6 @@ const Layout = () => {
             <Navbar />
             
             {/* Main Content Area */}
-            {/* <Outlet /> is a placeholder. React Router replaces this with the page we are currently on. */}
             <main className="grow">
                 <Outlet />
             </main>

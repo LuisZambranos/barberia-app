@@ -38,7 +38,7 @@ const Services = () => {
           <h2 className="text-gold font-bold tracking-[0.2em] uppercase text-sm mb-2">
             NUESTRO SERVICIOS
           </h2>
-          <h3 className="text-3xl font-bold text-white">
+          <h3 className="text-3xl font-bold text-txt-main">
             Elegancia & Estilo
           </h3>
         </div>
@@ -66,7 +66,7 @@ const Services = () => {
               <div className="p-6 flex flex-col grow">
                 {/* Encabezado: Título y Precio */}
                 <div className="flex justify-between items-start mb-4">
-                  <h4 className="text-xl font-bold text-white leading-tight">
+                  <h4 className="text-xl font-bold text-txt-main leading-tight">
                     {service.title}
                   </h4>
                   <span className="text-gold font-bold text-lg bg-black/30 px-2 py-1 rounded">

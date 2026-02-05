@@ -107,19 +107,18 @@ const Booking = () => {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-bg-main text-white flex items-center justify-center">
+    <div className="min-h-screen bg-bg-main text-txt-main flex items-center justify-center">
       <p className="animate-pulse text-gold text-xl font-bold tracking-widest uppercase">Cargando Experiencia...</p>
     </div>
   );
 
   return (
-    // CAMBIO: bg-bg-main para mantener tus colores originales
-    <div className="min-h-screen bg-bg-main text-white py-24 px-4 md:px-8">
+    <div className="min-h-screen bg-bg-main text-txt-main py-24 px-4 md:px-8">
       <div className="max-w-5xl mx-auto">
         
         {/* ENCABEZADO DE PASOS */}
         <div className="text-center mb-8 px-4">
-          <h1 className="text-2xl md:text-5xl font-extrabold text-white mb-6 tracking-tight uppercase">
+          <h1 className="text-2xl md:text-5xl font-extrabold text-txt-main mb-6 tracking-tight uppercase">
             Reserva tu <span className="text-gold">Turno</span>
           </h1>
 
@@ -135,7 +134,7 @@ const Booking = () => {
               { id: 4, label: "04 Tus Datos" },
               { id: 5, label: "05 Confirmación" }
             ].map((s) => {
-              // LÓGICA DE VALIDACIÓN: ¿Puede el usuario hacer clic aquí?
+              // LÓGICA DE VALIDACIÓN
               const isAvailable = 
                 (s.id === 1) ||
                 (s.id === 2 && selectedService) ||
@@ -164,7 +163,7 @@ const Booking = () => {
 
         {/* PASO 1: SERVICIOS */}
         {step === 1 && (
-          // Contenedor principal con espacio entre elementos
+          // Contenedor principal 
           <div className="max-w-2xl mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {services.map(s => (
               <div 
@@ -200,12 +199,9 @@ const Booking = () => {
                 Siguiente: Elegir Barbero
               </button>
               
-              {/* Botón de "Inicio" / Atrás */}
               <Link 
                 to="/" 
-                // Eliminamos el botón extra y aplicamos las clases directamente al Link
-                // Agregamos 'flex items-center justify-center' para centrar el texto vertical y horizontalmente
-                className="w-full border border-white/20 hover:border-gold hover:text-gold text-white font-bold py-4 px-6 rounded-sm transition-all uppercase tracking-wider backdrop-blur-sm flex items-center justify-center"
+                className="w-full border border-white/20 hover:border-gold hover:text-gold text-txt-main font-bold py-4 px-6 rounded-sm transition-all uppercase tracking-wider backdrop-blur-sm flex items-center justify-center"
               >
                 Inicio
               </Link>
@@ -230,7 +226,7 @@ const Booking = () => {
                   <div className="w-24 h-24 bg-bg-main border border-white/10 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl shadow-inner">
                     💈
                   </div>
-                  <h3 className="font-bold text-xl mb-1 text-white uppercase tracking-tight">{b.name}</h3>
+                  <h3 className="font-bold text-xl mb-1 text-txt-main uppercase tracking-tight">{b.name}</h3>
                   <p className="text-xs text-gold font-bold uppercase tracking-widest mb-4">{b.role}</p>
                   <code className="text-[10px] text-white/20 block bg-black/20 py-1 rounded">ID: {b.id}</code>
                 </div>
@@ -290,7 +286,7 @@ const Booking = () => {
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full bg-bg-main border border-white/10 rounded-sm p-4 text-white text-lg focus:outline-none focus:border-gold transition-colors"
+                    className="w-full bg-bg-main border border-white/10 rounded-sm p-4 text-txt-main text-lg focus:outline-none focus:border-gold transition-colors"
                   />
                 </div>
               </div>
@@ -312,7 +308,7 @@ const Booking = () => {
                             ? 'border-red-900/30 bg-red-900/10 text-red-700 cursor-not-allowed opacity-40' 
                             : isSelected 
                               ? 'bg-gold text-bg-main border-gold shadow-[0_0_15px_rgba(212,175,55,0.4)] scale-105' 
-                              : 'border-white/10 bg-white/2 text-white hover:border-gold hover:text-gold'}`}
+                              : 'border-white/10 bg-white/2 text-txt-main hover:border-gold hover:text-gold'}`}
                       >
                         {time}
                       </button>
@@ -379,7 +375,7 @@ const Booking = () => {
             <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-[0_0_30px_rgba(34,197,94,0.2)]">
               ✓
             </div>
-            <h2 className="text-3xl font-black mb-4 uppercase tracking-tighter text-white">
+            <h2 className="text-3xl font-black mb-4 uppercase tracking-tighter text-txt-main">
               ¡Reserva Solicitada!
             </h2>
             <p className="text-txt-secondary max-w-sm mx-auto mb-10">

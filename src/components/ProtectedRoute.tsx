@@ -8,7 +8,7 @@ interface Props {
 const ProtectedRoute = ({ allowedRoles }: Props) => {
   const { user, role, loading } = useAuth();
 
-  if (loading) return <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-[#D4AF37]">Cargando...</div>;
+  if (loading) return <div className="min-h-screen bg-main flex items-center justify-center text-txt-gold">Cargando...</div>;
 
   if (!user) {
     return <Navigate to="/login" replace />;

@@ -9,7 +9,7 @@ const barbers = [
     name: "Carlos 'El Jefe'",
     role: "Master Barber",
     specialty: "Cortes Clásicos & Navaja",
-    image: barbero4
+    image: "https://images.unsplash.com/photo-1618077360395-f3068be8e001?q=80&w=1000&auto=format&fit=crop"
   },
   {
     id: 2,
@@ -23,14 +23,14 @@ const barbers = [
     name: "Miguel Ángel",
     role: "Especialista en Barba",
     specialty: "Perfilado & Toalla Caliente",
-    image: "https://images.unsplash.com/photo-1618077360395-f3068be8e001?q=80&w=1000&auto=format&fit=crop"
+    image: barbero3
   },
   {
     id: 4,
     name: "Javi",
     role: "Barber & Color",
     specialty: "Estilo Urbano & Colorimetría",
-    image: barbero3
+    image: barbero4
   }
 ];
 
