@@ -3,6 +3,31 @@ import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Link } from 'react-router-dom';
 
+// IMÁGENES LOCALES
+import barbero1 from "../assets/barbero1.jpg";
+import barbero2 from "../assets/barbero2.jpg";
+import barbero3 from "../assets/barbero3.jpg";
+import barbero4 from "../assets/barbero4.jpg";
+
+// MAPA DE IMÁGENES
+const BARBER_PHOTOS: Record<string, string> = {
+  "A91rn25WwfZq2hPYvEnZ": barbero1,
+  "DmpODFjBiIuxBRaIyEwk": barbero2, 
+  "dDyRG44j2Mt4nJSfZXu9": barbero3,
+  "yQgREMm4PyY7kRqUWvlC": barbero4 
+};
+
+// FUNCIÓN PARA MEZCLAR ARRAY (Fisher-Yates Shuffle)
+// Esto asegura que el orden sea totalmente aleatorio y justo.
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
+
 interface Service {
   id: string;
   name: string;
@@ -14,6 +39,7 @@ interface Barber {
   id: string;
   name: string;
   role: string;
+  specialty: string;
 }
 
 const Booking = () => {
@@ -29,8 +55,8 @@ const Booking = () => {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   
   const [occupiedSlots, setOccupiedSlots] = useState<string[]>([]);
-
   const [isSubmitting, setIsSubmitting] = useState(false); 
+  
   const [clientData, setClientData] = useState({
     name: '',
     phone: '',
@@ -40,11 +66,18 @@ const Booking = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Cargar Servicios
         const sSnap = await getDocs(collection(db, "services"));
         setServices(sSnap.docs.map(d => ({ id: d.id, ...d.data() } as Service)));
         
+        // Cargar Barberos
         const bSnap = await getDocs(collection(db, "barbers"));
-        setBarbers(bSnap.docs.map(d => ({ id: d.id, ...d.data() } as Barber)));
+        let loadedBarbers = bSnap.docs.map(d => ({ id: d.id, ...d.data() } as Barber));
+        
+        // APLICAMOS EL SHUFFLE AQUÍ
+        // Cada vez que se carga la página, el orden será diferente.
+        setBarbers(shuffleArray(loadedBarbers));
+
       } catch (e) { 
         console.error("Error cargando datos:", e); 
       }
@@ -93,7 +126,7 @@ const Booking = () => {
       };
 
       await addDoc(collection(db, "appointments"), newAppointment);
-      setStep(5); // Saltamos a una pantalla de éxito
+      setStep(5);
     } catch (error) {
       console.error("Error al guardar la reserva:", error);
     } finally {
@@ -114,7 +147,7 @@ const Booking = () => {
 
   return (
     <div className="min-h-screen bg-bg-main text-txt-main py-24 px-4 md:px-8">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto"> {/* Aumenté el ancho máximo un poco */}
         
         {/* ENCABEZADO DE PASOS */}
         <div className="text-center mb-8 px-4">
@@ -122,11 +155,7 @@ const Booking = () => {
             Reserva tu <span className="text-gold">Turno</span>
           </h1>
 
-          {/* Contenedor con Scroll Horizontal */}
-          <div 
-            id="stepper-container"
-            className="flex items-center gap-4 overflow-x-auto pb-4 md:pb-2 md:justify-center whitespace-nowrap scrollbar-hide scroll-smooth"
-          >
+          <div id="stepper-container" className="flex items-center gap-4 overflow-x-auto pb-4 md:pb-2 md:justify-center whitespace-nowrap scrollbar-hide scroll-smooth">
             {[
               { id: 1, label: "01 Servicio" },
               { id: 2, label: "02 Barbero" },
@@ -134,7 +163,6 @@ const Booking = () => {
               { id: 4, label: "04 Tus Datos" },
               { id: 5, label: "05 Confirmación" }
             ].map((s) => {
-              // LÓGICA DE VALIDACIÓN
               const isAvailable = 
                 (s.id === 1) ||
                 (s.id === 2 && selectedService) ||
@@ -145,7 +173,6 @@ const Booking = () => {
               return (
                 <div 
                   key={s.id}
-                  id={`step-link-${s.id}`} // ID para el auto-focus
                   onClick={() => isAvailable && setStep(s.id)}
                   className={`flex items-center gap-3 shrink-0 transition-all duration-300 
                     ${isAvailable ? "cursor-pointer opacity-100" : "cursor-not-allowed opacity-30"}`}
@@ -163,7 +190,6 @@ const Booking = () => {
 
         {/* PASO 1: SERVICIOS */}
         {step === 1 && (
-          // Contenedor principal 
           <div className="max-w-2xl mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {services.map(s => (
               <div 
@@ -181,15 +207,12 @@ const Booking = () => {
                 <div className="flex flex-col items-end">
                   <p className="text-gold font-black text-2xl">${s.price.toLocaleString()}</p>
                   {selectedService?.id === s.id && (
-                    <span className="text-green-400 text-xs mt-1 font-semibold">
-                      SELECCIONADO
-                    </span>
+                    <span className="text-green-400 text-xs mt-1 font-semibold">SELECCIONADO</span>
                   )}
                 </div>
               </div>
             ))}
 
-            {/* Contenedor para apilar los dos botones al final */}
             <div className="flex flex-col space-y-4 mt-8"> 
               <button 
                 onClick={() => setStep(2)} 
@@ -198,50 +221,69 @@ const Booking = () => {
               >
                 Siguiente: Elegir Barbero
               </button>
-              
-              <Link 
-                to="/" 
-                className="w-full border border-white/20 hover:border-gold hover:text-gold text-txt-main font-bold py-4 px-6 rounded-sm transition-all uppercase tracking-wider backdrop-blur-sm flex items-center justify-center"
-              >
+              <Link to="/" className="w-full border border-white/20 hover:border-gold hover:text-gold text-txt-main font-bold py-4 px-6 rounded-sm transition-all uppercase tracking-wider backdrop-blur-sm flex items-center justify-center">
                 Inicio
               </Link>
             </div>
           </div>
         )}
 
-
-        {/* PASO 2: BARBEROS */}
+        {/* PASO 2: BARBEROS (OPTIMIZADO) */}
         {step === 2 && (
-          <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="w-full animate-in fade-in slide-in-from-right-4 duration-500">
+            
+            {/* GRID MODIFICADO: 2 columnas en móvil, 4 en desktop (para que quepan todos horizontalmente) */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {barbers.map(b => (
                 <div 
                   key={b.id} 
                   onClick={() => setSelectedBarber(b)} 
-                  className={`p-8 border rounded-sm cursor-pointer transition-all duration-300 text-center
+                  // Diseño más compacto (p-4) y efectos de hover
+                  className={`p-4 border rounded-sm cursor-pointer transition-all duration-300 text-center flex flex-col items-center h-full justify-between hover:-translate-y-1
                     ${selectedBarber?.id === b.id 
-                      ? 'border-gold bg-gold/5 shadow-[0_0_25px_rgba(212,175,55,0.2)] scale-[1.05]' 
-                      : 'border-white/10 bg-white/2 hover:border-gold/50'}`}
+                      ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(212,175,55,0.3)] ring-1 ring-gold' 
+                      : 'border-white/10 bg-white/2 hover:border-gold/50 hover:bg-white/5'}`}
                 >
-                  <div className="w-24 h-24 bg-bg-main border border-white/10 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl shadow-inner">
-                    💈
+                  <div className="mb-3">
+                    {/* Imagen un poco más pequeña (w-20) para ganar espacio */}
+                    <div className="w-20 h-20 md:w-24 md:h-24 bg-bg-main border border-white/10 rounded-full mx-auto flex items-center justify-center overflow-hidden shadow-lg">
+                      <img 
+                        src={BARBER_PHOTOS[b.id] || "https://via.placeholder.com/150"} 
+                        alt={b.name} 
+                        className="w-full h-full object-cover object-top transition-transform duration-500 hover:scale-110" 
+                      />
+                    </div>
                   </div>
-                  <h3 className="font-bold text-xl mb-1 text-txt-main uppercase tracking-tight">{b.name}</h3>
-                  <p className="text-xs text-gold font-bold uppercase tracking-widest mb-4">{b.role}</p>
-                  <code className="text-[10px] text-white/20 block bg-black/20 py-1 rounded">ID: {b.id}</code>
+                  
+                  <div>
+                    <h3 className="font-bold text-sm md:text-lg mb-1 text-txt-main uppercase tracking-tight leading-tight">
+                      {b.name.replace("PRUEBA", "")} {/* Limpieza visual opcional */}
+                    </h3>
+                    <p className="text-[10px] text-gold font-bold uppercase tracking-widest mb-2 truncate px-1">
+                      {b.role}
+                    </p>
+                    {/* Ocultamos especialidad en móvil muy pequeño si es necesario, o reducimos fuente */}
+                    <p className="text-txt-muted text-[10px] leading-tight hidden sm:block">
+                      {b.specialty}
+                    </p>
+                  </div>
+
+                  {selectedBarber?.id === b.id && (
+                     <div className="mt-3 w-3 h-3 bg-gold rounded-full animate-bounce"></div>
+                  )}
                 </div>
               ))}
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 border-t border-white/10 mt-6 pt-6">
+
+            <div className="flex flex-col sm:flex-row gap-4 border-t border-white/10 mt-6 pt-6 max-w-4xl mx-auto">
               <button 
                 onClick={() => setStep(3)} 
                 disabled={!selectedBarber} 
                 className="sm:w-3/4 bg-gold text-bg-main p-4 rounded-sm font-black text-sm uppercase tracking-[0.2em] disabled:opacity-30 shadow-xl shadow-gold/20 hover:bg-gold-hover transition-all"
               >
-                Ver Agenda
+                Ver Agenda de {selectedBarber?.name.split(' ')[0]}
               </button>
-              <button onClick={() => setStep(1)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
-              >
+              <button onClick={() => setStep(1)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all">
                 Regresar
               </button>
             </div>
@@ -251,25 +293,13 @@ const Booking = () => {
         {/* PASO 3: CALENDARIO Y HORAS */}
         {step === 3 && (
           <div className="animate-in fade-in zoom-in-95 duration-500">
-            {/* Resumen Superior */}
             <div className="mb-8 p-4 bg-white/3 border-l-4 border-gold flex justify-between items-center">
               <div>
-                <p className="text-[10px] text-gold font-bold uppercase tracking-widest">Resumen de Selección</p>
-                
-                {/* 👇 CAMBIO CLAVE AQUÍ: flex-col en móvil, md:flex-row en PC */}
+                <p className="text-[10px] text-gold font-bold uppercase tracking-widest">Resumen</p>
                 <div className="flex flex-col md:flex-row md:items-center">
-                  
-                  {/* El nombre del servicio: con margen abajo en móvil, sin margen en PC */}
-                  <p className="text-lg font-bold mb-1 md:mb-0 md:mr-2">
-                    {selectedService?.name}
-                  </p>
-
-                  {/* El nombre del barbero: la etiqueta 'con' queda en la segunda línea en móvil */}
-                  <p className="text-lg font-bold">
-                    <span className="text-txt-secondary font-light"> con</span> {selectedBarber?.name}
-                  </p>
+                  <p className="text-lg font-bold mb-1 md:mb-0 md:mr-2">{selectedService?.name}</p>
+                  <p className="text-lg font-bold"><span className="text-txt-secondary font-light"> con</span> {selectedBarber?.name}</p>
                 </div>
-                
               </div>
               <div className="text-right">
                 <p className="text-xl font-black text-gold">${selectedService?.price.toLocaleString()}</p>
@@ -277,7 +307,6 @@ const Booking = () => {
             </div>
 
             <div className="grid lg:grid-cols-5 gap-8 items-start">
-              {/* Columna Fecha (2/5) */}
               <div className="lg:col-span-2 space-y-4">
                 <h3 className="text-sm font-bold text-gold uppercase tracking-[0.2em]">1. Elige la Fecha</h3>
                 <div className="bg-white/2 p-6 rounded-sm border border-white/10">
@@ -291,7 +320,6 @@ const Booking = () => {
                 </div>
               </div>
               
-              {/* Columna Horas (3/5) */}
               <div className="lg:col-span-3 space-y-4">
                 <h3 className="text-sm font-bold text-gold uppercase tracking-[0.2em]">2. Horarios Disponibles</h3>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -305,7 +333,7 @@ const Booking = () => {
                         onClick={() => setSelectedTime(time)}
                         className={`py-3 rounded-sm font-bold text-xs transition-all duration-300 border
                           ${isOccupied 
-                            ? 'border-red-900/30 bg-red-900/10 text-red-700 cursor-not-allowed opacity-40' 
+                            ? 'border-red-600 bg-red-700/50 text-txt-main cursor-not-allowed opacity-40' 
                             : isSelected 
                               ? 'bg-gold text-bg-main border-gold shadow-[0_0_15px_rgba(212,175,55,0.4)] scale-105' 
                               : 'border-white/10 bg-white/2 text-txt-main hover:border-gold hover:text-gold'}`}
@@ -318,7 +346,6 @@ const Booking = () => {
               </div>
             </div>
 
-            {/* BOTONES FINALES */}
             <div className="flex flex-col sm:flex-row gap-4 border-t border-white/10 mt-6 pt-6">
               <button 
                 disabled={!selectedTime}
@@ -327,8 +354,7 @@ const Booking = () => {
               >
                 Ingresar Datos
               </button>
-              <button onClick={() => setStep(2)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
-              >
+              <button onClick={() => setStep(2)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all">
                 Regresar
               </button>
             </div>
@@ -361,15 +387,15 @@ const Booking = () => {
                 >
                   {isSubmitting ? "Procesando..." : "Confirmar Reserva"}
                 </button>
-                <button onClick={() => setStep(3)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
-              >
-                Regresar</button>
+                <button onClick={() => setStep(3)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all">
+                  Regresar
+                </button>
               </div>
             </form>
           </div>
         )}
 
-        {/* PASO 5: ÉXITO Y REDIRECCIÓN */}
+        {/* PASO 5: ÉXITO */}
         {step === 5 && (
           <div className="text-center py-20 animate-in zoom-in-95 duration-700">
             <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-[0_0_30px_rgba(34,197,94,0.2)]">
@@ -379,12 +405,9 @@ const Booking = () => {
               ¡Reserva Solicitada!
             </h2>
             <p className="text-txt-secondary max-w-sm mx-auto mb-10">
-              Hemos registrado tu solicitud con éxito. Tu reserva está en estado <span className="text-gold font-bold italic">pendiente</span> hasta confirmar el pago.
+              Hemos registrado tu solicitud con éxito. Tu reserva está en estado <span className="text-gold font-bold italic">pendiente</span>.
             </p>
-            <Link 
-              to="/" 
-              className="bg-gold text-bg-main py-4 px-10 rounded-sm font-bold uppercase tracking-widest hover:bg-gold-hover transition-all"
-            >
+            <Link to="/" className="bg-gold text-bg-main py-4 px-10 rounded-sm font-bold uppercase tracking-widest hover:bg-gold-hover transition-all">
               Volver al Inicio
             </Link>
           </div>
