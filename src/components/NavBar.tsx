@@ -54,13 +54,15 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* BOTÓN DE ACCIÓN */}
-            <Link 
-              to="/book" 
-              className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
-            >
-              Reservar Cita
-            </Link>
+            {/* BOTÓN DE ACCIÓN: Visible si no hay usuario (anonimo) O si es cliente */}
+            {(!user || role === 'client') && (
+              <Link 
+                to="/book" 
+                className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
+              >
+                Reservar Cita
+              </Link>
+            )}
           </nav>
 
           {/* INTERRUPTOR MÓVIL */}
@@ -92,9 +94,16 @@ const Navbar = () => {
             <a href="#servicios" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={() => setIsOpen(false)}>SERVICIOS</a>
             <a href="#barberos" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={() => setIsOpen(false)}>EQUIPO</a>
             
-            <Link to="/book" className="mt-4 w-full text-center bg-gold text-bg-main px-4 py-3 rounded-sm font-bold" onClick={() => setIsOpen(false)}>
-              RESERVAR AHORA
-            </Link>
+            {/* BOTÓN DE ACCIÓN: Visible si no hay usuario (anonimo) O si es cliente */}
+            {(!user || role === 'client') && (
+              <Link 
+                to="/book" 
+                className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
+              >
+                Reservar Cita
+              </Link>
+            )}
+            
 
             {/* ACCIONES DE SESIÓN MÓVIL */}
             {user ? (

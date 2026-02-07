@@ -1,21 +1,26 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-interface Props {
-  allowedRoles?: ("client" | "barber" | "admin")[];
+interface ProtectedRouteProps {
+  allowedRoles?: string[];
 }
 
-const ProtectedRoute = ({ allowedRoles }: Props) => {
+const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   const { user, role, loading } = useAuth();
+  const location = useLocation(); // 1. Obtenemos la ubicación actual
 
-  if (loading) return <div className="min-h-screen bg-main flex items-center justify-center text-txt-gold">Cargando...</div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-bg-main text-gold animate-pulse">
+      Cargando...
+    </div>
+  );
 
+  // Si no hay usuario, mandarlo al Login, PERO guardando la ubicación en "state"
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (allowedRoles && role && !allowedRoles.includes(role)) {
-    // Si tiene usuario pero no el rol adecuado, lo mandamos al home
     return <Navigate to="/" replace />;
   }
 

@@ -2,20 +2,24 @@ import { useState } from "react";
 import { auth, db } from "../firebase/config";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { useNavigate } from "react-router-dom";
+// 1. IMPORTAR useLocation
+import { useNavigate, useLocation } from "react-router-dom";
 
 const Login = () => {
-  // --- ESTADOS DEL FORMULARIO ---
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // Hook para redirigir al usuario
   const navigate = useNavigate();
+  // 2. OBTENER EL ESTADO DE NAVEGACIÓN
+  const location = useLocation();
+  
+  // Aquí recuperamos la ruta de donde venía el usuario (ej: /book). 
+  // Si no venía de ningún lado, usamos "/" por defecto.
+  const from = location.state?.from?.pathname || "/";
 
-  // --- FUNCIÓN PRINCIPAL DE ENVÍO ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -23,13 +27,10 @@ const Login = () => {
 
     try {
       if (isRegistering) {
-        // === BLOQUE DE REGISTRO ===
-        // 1. Crea el usuario en Firebase Auth
+        // === REGISTRO ===
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 2. Crea la ficha del usuario en la base de datos (Firestore)
-        // Se guarda con el rol "client" por defecto
         await setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           email: user.email,
@@ -37,38 +38,33 @@ const Login = () => {
           createdAt: new Date().toISOString()
         });
         
-        // 3. Redirige al inicio tras registro exitoso
-        navigate("/");
+        // Al registrarse, lo mandamos a la ruta pendiente (Booking) o al Home
+        navigate(from, { replace: true });
 
       } else {
-        // === BLOQUE DE INICIO DE SESIÓN ===
-        // 1. Verifica credenciales con Firebase Auth
+        // === LOGIN ===
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 2. Busca los datos del usuario en Firestore para saber su rol
         const docRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
           const userData = docSnap.data();
           
-          // 3. Redirección inteligente según el rol (Admin o Cliente)
           if (userData.rol === "admin") {
             navigate("/admin");
           } else {
-            navigate("/");
+            // 3. REDIRECCIÓN INTELIGENTE
+            // Si intentó reservar, lo mandamos a reservar. Si no, al Home.
+            navigate(from, { replace: true });
           }
         } else {
-          // Si el usuario existe en Auth pero no en DB, lo mandamos al home
-          navigate("/");
+          navigate(from, { replace: true });
         }
       }
     } catch (err: any) {
-      // === MANEJO DE ERRORES ===
-      // Traduce los códigos de error técnicos a mensajes amigables
       let friendlyMessage = "Ocurrió un error. Inténtalo de nuevo.";
-      
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         friendlyMessage = "Correo o contraseña incorrectos.";
       } else if (err.code === 'auth/email-already-in-use') {
@@ -78,41 +74,31 @@ const Login = () => {
       } else if (err.code === 'auth/weak-password') {
         friendlyMessage = "La contraseña debe tener al menos 6 caracteres.";
       }
-      
       setError(friendlyMessage);
     } finally {
-      // Libera el estado de carga pase lo que pase
       setIsLoading(false);
     }
   };
 
-  // --- RENDERIZADO VISUAL ---
   return (
     <div className="min-h-screen bg-bg-main flex items-center justify-center p-4 font-sans text-txt-main">
-      {/* Tarjeta Principal */}
       <div className="w-full max-w-md bg-bg-card border border-white/10 p-10 rounded-sm shadow-2xl relative overflow-hidden">
         
-        {/* Línea Decorativa Superior */}
         <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-gold to-transparent"></div>
         
-        {/* Encabezado: Título y Subtítulo */}
         <div className="text-center mb-10">
           <h2 className="text-4xl font-black text-txt-main uppercase tracking-tighter mb-2 italic">
             BARBER <span className="text-gold">SHOP</span>
           </h2>
+          {/* Título dinámico corregido */}
           <p className="text-[10px] text-txt-muted font-bold uppercase tracking-[0.4em]">
-            {isRegistering ? "CREA TU CUENTA" : "INICIA SESIÓN"}
+            {isRegistering ? "Registrarse" : "Iniciar Sesión"}
           </p>
         </div>
-
         {/* Formulario de Entrada */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          
-          {/* Campo: Email */}
           <div className="space-y-1">
-            <label className="text-[9px] font-bold text-txt-muted uppercase tracking-widest ml-1">
-              Email
-            </label>
+            <label className="text-[9px] font-bold text-txt-muted uppercase tracking-widest ml-1">Email</label>
             <input
               type="email"
               placeholder="correo@ejemplo.com"
@@ -124,11 +110,8 @@ const Login = () => {
             />
           </div>
 
-          {/* Campo: Contraseña */}
           <div className="space-y-1">
-            <label className="text-[9px] font-bold text-txt-muted uppercase tracking-widest ml-1">
-              Contraseña
-            </label>
+            <label className="text-[9px] font-bold text-txt-muted uppercase tracking-widest ml-1">Contraseña</label>
             <input
               type="password"
               placeholder="••••••••"
@@ -140,14 +123,8 @@ const Login = () => {
             />
           </div>
 
-          {/* Mensaje de Error (solo si existe) */}
-          {error && (
-            <p className="text-error text-[10px] text-center uppercase font-bold tracking-widest">
-              {error}
-            </p>
-          )}
+          {error && <p className="text-error text-[10px] text-center uppercase font-bold tracking-widest">{error}</p>}
 
-          {/* Botón de Acción Principal */}
           <button
             type="submit"
             disabled={isLoading}
@@ -157,7 +134,6 @@ const Login = () => {
           </button>
         </form>
 
-        {/* Botón para cambiar entre Login y Registro */}
         <div className="mt-8 text-center">
           <button
             onClick={() => { setIsRegistering(!isRegistering); setError(""); }}
@@ -167,7 +143,6 @@ const Login = () => {
             {isRegistering ? "¿Ya tienes cuenta? Inicia sesión" : "¿No tienes cuenta? Regístrate"}
           </button>
         </div>
-
       </div>
     </div>
   );

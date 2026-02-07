@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import Booking from "./pages/Booking";
 import Login from "./pages/Login"; 
 import Admin from "./pages/Admin";
+import BarberPage from "./pages/BarberPage";
 
 function App() {
   return (
@@ -25,6 +26,12 @@ function App() {
               <Route path="book" element={<Booking />}/>
               <Route path="/admin" element={<Admin />} />
             </Route>
+          </Route>
+
+          {/* Rutas Protegidas (Solo usuarios logueados pueden ver panel) */}
+          <Route element={<ProtectedRoute allowedRoles={['barber', 'admin']} />}>
+              {/* SOLO UNA RUTA AHORA */}
+              <Route path="/barber" element={<BarberPage />} />
           </Route>
 
 
