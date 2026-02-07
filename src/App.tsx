@@ -5,6 +5,7 @@ import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Booking from "./pages/Booking";
 import Login from "./pages/Login"; 
+import Admin from "./pages/Admin";
 
 function App() {
   return (
@@ -14,22 +15,18 @@ function App() {
           
           {/* Al poner Login dentro de Layout, heredará el NavBar y Footer */}
           <Route element={<Layout />}>
-             
-             {/* Rutas Públicas / Generales */}
-             <Route path="/" element={<Home />}/>
-             <Route path="login" element={<Login />}/>
-             
-             {/* Rutas Protegidas (Solo usuarios logueados pueden reservar) */}
-             <Route element={<ProtectedRoute allowedRoles={['client', 'admin', 'barber']} />}>
-                <Route path="book" element={<Booking />}/>
-             </Route>
-
+            
+            {/* Rutas Públicas / Generales */}
+            <Route path="/" element={<Home />}/>
+            <Route path="login" element={<Login />}/>
+            
+           {/* Rutas Protegidas (Solo usuarios logueados pueden reservar) */}
+            <Route element={<ProtectedRoute allowedRoles={['client', 'admin', 'barber']} />}>
+              <Route path="book" element={<Booking />}/>
+              <Route path="/admin" element={<Admin />} />
+            </Route>
           </Route>
 
-          {/* Ejemplo Ruta Admin (Esta puede ir sin layout o con layout diferente si prefieres) */}
-          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-             <Route path="/admin" element={<div>Panel Admin</div>} />
-          </Route>
 
         </Routes>
       </BrowserRouter>
