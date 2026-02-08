@@ -1,19 +1,32 @@
 import { useState, useEffect } from "react";
-import { Clock, DollarSign, Phone, Mail, Scissors, Search, Hash, Loader2 } from "lucide-react";
+// Agregamos Mail al import para usarlo
+import { Clock, DollarSign, Phone, MessageCircle, Scissors, Search, Loader2, Mail, Copy } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { db } from "../../firebase/config"; // Ajusta la ruta si es necesario
-import { type Appointment } from "../../models/Appointment"; // Asegúrate de tener esta interfaz definida
+import { db } from "../../firebase/config";
+import { type Appointment } from "../../models/Appointment"; 
+import { sendConfirmationMessage } from "../../utils/whatsapp";
+import { copyToClipboard } from "../../utils/clipboard";
 
 const AppointmentsView = ({ barberId }: { barberId: string }) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // EFECTO: Escuchar cambios en tiempo real en Firestore
+  // 1. CORRECCIÓN: Los estados van AQUÍ (Nivel superior), NO dentro de useEffect
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // 2. CORRECCIÓN: La función va AQUÍ
+  const handleCopyEmail = (email: string, id: string) => {
+    const success = copyToClipboard(email); 
+    if (success) {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000); 
+    }
+  };
+
   useEffect(() => {
     if (!barberId) return;
 
-    // CONSULTA: Dame las citas donde barberId sea igual al mío
     const q = query(
       collection(db, "appointments"),
       where("barberId", "==", barberId),
@@ -25,7 +38,6 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
         ...doc.data()
       })) as Appointment[];
 
-      // Ordenamiento manual si falla el de Firebase por índices
       dbData.sort((a, b) => {
         if (a.date !== b.date) return a.date.localeCompare(b.date);
         return a.time.localeCompare(b.time);
@@ -38,13 +50,12 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
     return () => unsubscribe();
   }, [barberId]);
 
-  // FILTRADO LOCAL (Buscador)
+  // FILTRADO LOCAL
   const filteredAppointments = appointments.filter((appt) => {
     const term = searchTerm.toLowerCase();
     const nameMatch = appt.clientName ? appt.clientName.toLowerCase().includes(term) : false;
     const idMatch = appt.id.toLowerCase().includes(term);
     const dateMatch = appt.date.includes(term);
-    
     return nameMatch || idMatch || dateMatch;
   });
 
@@ -92,8 +103,8 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
                     {appt.status === 'confirmed' ? 'Confirmada' : appt.status}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 text-[10px] text-txt-muted font-mono bg-black/20 w-fit px-2 py-0.5 rounded">
-                  <Hash size={10} /> {appt.id.slice(0, 6)}...
+                <div className="flex items-center gap-1 text-[14px] text-txt-muted font-mono bg-black/20 w-fit px-5 py-0.5 rounded">
+                  <span>{appt.shortId ? appt.shortId : appt.id.slice(0, 6)}</span>
                 </div>
               </div>
 
@@ -102,11 +113,28 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
                 <div>
                   <h3 className="text-lg font-bold text-txt-main mb-1">{appt.clientName}</h3>
                   <div className="flex flex-col gap-1 text-xs text-txt-muted">
-                    <div className="flex items-center gap-2">
-                      <Mail size={12} className="text-gold/70" /> {appt.clientEmail}
+                    
+                    {/* CORREO + ÍCONO MAIL + BOTÓN COPIAR */}
+                    <div className="text-sm text-txt-muted flex items-center gap-2">
+                      {/* Aquí usamos el ícono Mail que querías */}
+                      <Mail size={14} className="text-gold/70" />
+                      
+                      <span className="truncate max-w-[150px]">{appt.clientEmail}</span>
+                      
+                      <button 
+                          onClick={() => handleCopyEmail(appt.clientEmail, appt.id)}
+                          className="text-gold/50 hover:text-gold transition-colors p-1"
+                          title="Copiar correo"
+                      >
+                          {copiedId === appt.id 
+                              ? <span className="text-[10px] text-green-500 font-bold">¡OK!</span> 
+                              : <Copy size={14} />
+                          }
+                      </button>
                     </div>
+
                     <div className="flex items-center gap-2">
-                      <Phone size={12} className="text-gold/70" /> {appt.clientPhone}
+                      <Phone size={14} className="text-gold/70" /> {appt.clientPhone}
                     </div>
                   </div>
                 </div>
@@ -118,7 +146,7 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
                     <p className="text-[10px] uppercase text-txt-muted font-bold tracking-wider mb-1">Servicio</p>
                     <div className="flex items-center gap-2 text-sm font-medium text-white">
                       <Scissors size={14} className="text-gold" />
-                      {appt.serviceName} {/* Asegúrate que en tu BD se llame serviceName o serviceType */}
+                      {appt.serviceName}
                     </div>
                   </div>
                   <div className="text-right">
@@ -127,7 +155,6 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
                   </div>
                 </div>
                 
-                 {/* PRECIO (Si lo tienes en la cita) */}
                  <div className="bg-bg-main rounded-lg p-3 border border-white/5 flex items-center justify-between">
                   <span className="text-[10px] uppercase text-txt-muted font-bold">Valor</span>
                   <div className="flex items-center gap-2 text-sm font-bold text-gold">
@@ -143,9 +170,13 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
                   <a href={`tel:${appt.clientPhone}`} className="p-3 flex justify-center items-center gap-2 hover:bg-gold hover:text-bg-main transition-colors text-xs font-bold text-txt-muted">
                       <Phone size={14} /> Llamar
                   </a>
-                  <a href={`mailto:${appt.clientEmail}`} className="p-3 flex justify-center items-center gap-2 hover:bg-gold hover:text-bg-main transition-colors text-xs font-bold text-txt-muted">
-                      <Mail size={14} /> Correo
-                  </a>
+                  {/* CORRECCIÓN FINAL: Usamos onClick en vez de href para WhatsApp */}
+                  <button 
+                    onClick={() => sendConfirmationMessage(appt)} 
+                    className="p-3 flex justify-center items-center gap-2 hover:bg-green-600 hover:text-white transition-colors text-xs font-bold text-green-500"
+                  >
+                      <MessageCircle size={14} /> WhatsApp
+                  </button>
               </div>
             </div>
           ))}
