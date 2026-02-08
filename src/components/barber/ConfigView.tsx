@@ -1,14 +1,22 @@
 import { useState } from "react";
 import { Save, Bell, DollarSign, Clock } from "lucide-react";
 
-const ConfigView = () => {
-  // ESTADOS LOCALES PARA LOS TOGGLES
+// 1. DEFINIMOS QUÉ DATOS VA A RECIBIR
+interface ConfigViewProps {
+  barberId: string;
+}
+
+// 2. RECIBIMOS EL ID AQUÍ (Desestructuración)
+const ConfigView = ({ barberId }: ConfigViewProps) => {
+  
+  // ESTADOS LOCALES
   const [paymentMethods, setPaymentMethods] = useState({ cash: true, transfer: true, card: false });
   const [notifications, setNotifications] = useState({ newBooking: true, cancellation: true });
   const [schedule, setSchedule] = useState({ start: "10:00", end: "20:00", active: true });
 
   const handleSave = () => {
-    // Aquí iría la lógica para guardar en Firebase
+    // AHORA SÍ PODREMOS USAR EL ID PARA GUARDAR EN LA BD
+    console.log("Guardando configuración para el barbero:", barberId);
     alert("Configuración guardada (Simulación)");
   };
 
@@ -24,6 +32,12 @@ const ConfigView = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+      
+      {/* Muestra el ID solo para que sepas que llegó bien (luego lo borras) */}
+      <div className="text-[10px] text-txt-muted text-right">
+        ID Configurando: {barberId}
+      </div>
+
       {/* 1. HORARIO */}
       <section className="bg-bg-card border border-white/5 rounded-xl p-6 shadow-lg">
         <div className="flex items-center gap-3 mb-6">
