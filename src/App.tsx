@@ -26,13 +26,14 @@ function App() {
               <Route path="book" element={<Booking />}/>
               <Route path="/admin" element={<Admin />} />
             </Route>
+
+            {/* Rutas Protegidas (Solo usuarios barber y admin pueden ver panel) */}
+            <Route element={<ProtectedRoute allowedRoles={['barber', 'admin']} />}>
+                <Route path="/barber" element={<BarberPage />} />
+            </Route>
           </Route>
 
-          {/* Rutas Protegidas (Solo usuarios logueados pueden ver panel) */}
-          <Route element={<ProtectedRoute allowedRoles={['barber', 'admin']} />}>
-              {/* SOLO UNA RUTA AHORA */}
-              <Route path="/barber" element={<BarberPage />} />
-          </Route>
+          
 
 
         </Routes>

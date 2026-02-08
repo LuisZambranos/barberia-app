@@ -1,74 +1,52 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { type Service } from '../models/Service';
 
+//  IMÁGENES 
 import perfiladoBarba from '../assets/perfiladoBarba.jpg';
+import corteClasico from '../assets/corte.jpg';
+import servicioCompleto from '../assets/completo.jpg';
 
-// 1. DEFINIMOS LA FORMA DE LOS DATOS (INTERFACE)
-// Esto le dice a TypeScript qué esperar de cada servicio.
-interface Service {
-  id: string;
-  name: string;
-  price: string;
-  description: string;
-  image: string;
-}
-
-// 2. TIPAMOS EL DICCIONARIO
-// "Record<string, string>" significa: "Este objeto tiene llaves que son texto y valores que son texto".
-// Esto soluciona el error de que "no se puede usar para indexar".
-const SERVICE_IMAGES: Record<string, string> = {
-  "Corte Clásico": "https://images.unsplash.com/photo-1605497788044-5a32c7078486?q=80&w=1000&auto=format&fit=crop",
-  "Perfilado de Barba": perfiladoBarba,
-  "Servicio Completo": "https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=1000&auto=format&fit=crop"
-};
+// DATOS ESTÁTICOS (Carga inmediata, sin Firebase, con tus fotos)
+const SERVICES_DATA: Service[] = [
+  {
+    id: "corte-clasico",
+    name: "Corte Clásico",
+    price: 15000,
+    duration: 45,
+    description: "Corte a tijera o máquina con acabados precisos. Incluye lavado y peinado.",
+    image: corteClasico
+  },
+  {
+    id: "perfilado-barba",
+    name: "Perfilado de Barba",
+    price: 12000,
+    duration: 30,
+    description: "Ritual de toalla caliente, aceites esenciales y navaja para un perfilado perfecto.",
+    image: perfiladoBarba
+  },
+  {
+    id: "servicio-completo",
+    name: "Servicio Completo",
+    price: 25000,
+    duration: 60,
+    description: "La experiencia VIP: Corte + Barba + Mascarilla negra + Bebida de cortesía.",
+    image: servicioCompleto
+  }
+];
 
 const Services = () => {
-  // 3. TIPAMOS EL USESTATE
-  // Le decimos explícitamente que esto será un array de "Service" (<Service[]>).
   const [services, setServices] = useState<Service[]>([]);
 
   useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "services"));
-        
-        if (!querySnapshot.empty) {
-          // Aquí TypeScript ahora sabe que devolveremos un array de Service
-          const dbData = querySnapshot.docs.map((doc) => {
-            const data = doc.data();
-            
-            // Forzamos a que data.name sea tratado como string para buscar en el diccionario
-            const serviceName = data.name as string;
-            
-            const imagenAsignada = SERVICE_IMAGES[serviceName] || SERVICE_IMAGES["Corte Clásico"];
-
-            return {
-              id: doc.id,
-              name: serviceName, 
-              // Convertimos a string de forma segura
-              price: data.price ? `$${Number(data.price).toLocaleString('es-CL')}` : "$0",
-              description: (data.description as string) || "Descripción no disponible.",
-              image: imagenAsignada
-            };
-          });
-          
-          setServices(dbData);
-        }
-      } catch (error) {
-        console.error("Error al cargar servicios:", error);
-      }
-    };
-
-    fetchServices();
+    setServices(SERVICES_DATA);
   }, []);
 
   return (
     <section id="servicios" className="py-16 bg-bg-main">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        <div className="text-center mb-12">
+        <div className="text-center mb-12 animate-in fade-in duration-700">
           <h2 className="text-gold font-bold tracking-[0.2em] uppercase text-sm mb-2">
             NUESTROS SERVICIOS
           </h2>
@@ -82,7 +60,7 @@ const Services = () => {
           {services.map((service) => (
             <div 
               key={service.id} 
-              className="bg-bg-card rounded-xl overflow-hidden shadow-lg border border-white/5 flex flex-col"
+              className="bg-bg-card rounded-xl overflow-hidden shadow-lg border border-white/5 flex flex-col hover:-translate-y-1 transition-transform duration-300"
             >
               <div className="h-48 w-full overflow-hidden relative group">
                 <img 
@@ -99,7 +77,8 @@ const Services = () => {
                     {service.name}
                   </h4>
                   <span className="text-gold font-bold text-lg bg-black/30 px-2 py-1 rounded">
-                    {service.price}
+                    {/* Formateamos el precio */}
+                    ${service.price.toLocaleString('es-CL')}
                   </span>
                 </div>
 

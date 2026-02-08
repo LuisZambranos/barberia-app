@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Link } from 'react-router-dom';
+
+// IMPORTAMOS EL SERVICIO NUEVO
+import { createAppointment } from '../services/booking.service';
+
+// IMPORTAMOS TIPOS
+import type { Service } from '../models/Service';
+import type { Barber } from '../models/Barber';
 
 // IMÁGENES LOCALES
 import barbero1 from "../assets/barbero1.jpg";
@@ -9,7 +16,6 @@ import barbero2 from "../assets/barbero2.jpg";
 import barbero3 from "../assets/barbero3.jpg";
 import barbero4 from "../assets/barbero4.jpg";
 
-// MAPA DE IMÁGENES
 const BARBER_PHOTOS: Record<string, string> = {
   "A91rn25WwfZq2hPYvEnZ": barbero1,
   "DmpODFjBiIuxBRaIyEwk": barbero2, 
@@ -17,8 +23,6 @@ const BARBER_PHOTOS: Record<string, string> = {
   "yQgREMm4PyY7kRqUWvlC": barbero4 
 };
 
-// FUNCIÓN PARA MEZCLAR ARRAY (Fisher-Yates Shuffle)
-// Esto asegura que el orden sea totalmente aleatorio y justo.
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
@@ -27,20 +31,6 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   }
   return newArray;
 };
-
-interface Service {
-  id: string;
-  name: string;
-  price: number;
-  duration: number;
-}
-
-interface Barber {
-  id: string;
-  name: string;
-  role: string;
-  specialty: string;
-}
 
 const Booking = () => {
   const [step, setStep] = useState(1);
@@ -55,7 +45,8 @@ const Booking = () => {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   
   const [occupiedSlots, setOccupiedSlots] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false); 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successId, setSuccessId] = useState<string | null>(null); // ID del ticket generado
   
   const [clientData, setClientData] = useState({
     name: '',
@@ -63,19 +54,15 @@ const Booking = () => {
     email: ''
   });
 
+  // CARGA INICIAL
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Cargar Servicios
         const sSnap = await getDocs(collection(db, "services"));
         setServices(sSnap.docs.map(d => ({ id: d.id, ...d.data() } as Service)));
         
-        // Cargar Barberos
         const bSnap = await getDocs(collection(db, "barbers"));
         let loadedBarbers = bSnap.docs.map(d => ({ id: d.id, ...d.data() } as Barber));
-        
-        // APLICAMOS EL SHUFFLE AQUÍ
-        // Cada vez que se carga la página, el orden será diferente.
         setBarbers(shuffleArray(loadedBarbers));
 
       } catch (e) { 
@@ -86,6 +73,7 @@ const Booking = () => {
     fetchData();
   }, []);
 
+  // VERIFICAR HORAS OCUPADAS
   useEffect(() => {
     if (!selectedBarber || !selectedDate) return;
 
@@ -104,31 +92,28 @@ const Booking = () => {
     fetchOccupiedSlots();
   }, [selectedBarber, selectedDate]);
 
+  // --- NUEVA LÓGICA DE ENVÍO USANDO EL SERVICIO ---
   const handleFinalizeBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedService || !selectedBarber || !selectedTime) return;
 
     setIsSubmitting(true);
     try {
-      const newAppointment = {
-        serviceId: selectedService.id,
-        serviceName: selectedService.name,
-        barberId: selectedBarber.id,
-        barberName: selectedBarber.name,
+      // LLAMAMOS AL SERVICIO (BACKEND)
+      const ticketId = await createAppointment({
+        service: selectedService,
+        barber: selectedBarber,
         date: selectedDate,
         time: selectedTime,
-        price: selectedService.price,
-        customerName: clientData.name,
-        customerPhone: clientData.phone,
-        customerEmail: clientData.email,
-        status: 'pending', 
-        createdAt: new Date().toISOString()
-      };
+        client: clientData
+      });
 
-      await addDoc(collection(db, "appointments"), newAppointment);
+      // SI TODO SALE BIEN:
+      setSuccessId(ticketId);
       setStep(5);
     } catch (error) {
       console.error("Error al guardar la reserva:", error);
+      alert("Hubo un error al procesar tu reserva. Intenta nuevamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -147,7 +132,7 @@ const Booking = () => {
 
   return (
     <div className="min-h-screen bg-bg-main text-txt-main py-24 px-4 md:px-8">
-      <div className="max-w-6xl mx-auto"> {/* Aumenté el ancho máximo un poco */}
+      <div className="max-w-6xl mx-auto"> 
         
         {/* ENCABEZADO DE PASOS */}
         <div className="text-center mb-8 px-4">
@@ -228,24 +213,20 @@ const Booking = () => {
           </div>
         )}
 
-        {/* PASO 2: BARBEROS (OPTIMIZADO) */}
+        {/* PASO 2: BARBEROS */}
         {step === 2 && (
           <div className="w-full animate-in fade-in slide-in-from-right-4 duration-500">
-            
-            {/* GRID MODIFICADO: 2 columnas en móvil, 4 en desktop (para que quepan todos horizontalmente) */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {barbers.map(b => (
                 <div 
                   key={b.id} 
                   onClick={() => setSelectedBarber(b)} 
-                  // Diseño más compacto (p-4) y efectos de hover
                   className={`p-4 border rounded-sm cursor-pointer transition-all duration-300 text-center flex flex-col items-center h-full justify-between hover:-translate-y-1
                     ${selectedBarber?.id === b.id 
                       ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(212,175,55,0.3)] ring-1 ring-gold' 
                       : 'border-white/10 bg-white/2 hover:border-gold/50 hover:bg-white/5'}`}
                 >
                   <div className="mb-3">
-                    {/* Imagen un poco más pequeña (w-20) para ganar espacio */}
                     <div className="w-20 h-20 md:w-24 md:h-24 bg-bg-main border border-white/10 rounded-full mx-auto flex items-center justify-center overflow-hidden shadow-lg">
                       <img 
                         src={BARBER_PHOTOS[b.id] || "https://via.placeholder.com/150"} 
@@ -257,12 +238,11 @@ const Booking = () => {
                   
                   <div>
                     <h3 className="font-bold text-sm md:text-lg mb-1 text-txt-main uppercase tracking-tight leading-tight">
-                      {b.name.replace("PRUEBA", "")} {/* Limpieza visual opcional */}
+                      {b.name.replace("PRUEBA", "")} 
                     </h3>
                     <p className="text-[10px] text-gold font-bold uppercase tracking-widest mb-2 truncate px-1">
                       {b.role}
                     </p>
-                    {/* Ocultamos especialidad en móvil muy pequeño si es necesario, o reducimos fuente */}
                     <p className="text-txt-muted text-[10px] leading-tight hidden sm:block">
                       {b.specialty}
                     </p>
@@ -404,8 +384,17 @@ const Booking = () => {
             <h2 className="text-3xl font-black mb-4 uppercase tracking-tighter text-txt-main">
               ¡Reserva Solicitada!
             </h2>
+            
+            {/* CÓDIGO DE RESERVA */}
+            {successId && (
+              <div className="bg-white/5 border border-white/10 rounded-lg p-6 inline-block mb-8">
+                <p className="text-[10px] text-txt-secondary uppercase tracking-[0.3em] mb-2">Tu Código de Ticket</p>
+                <p className="text-4xl font-mono font-bold text-gold">{successId}</p>
+              </div>
+            )}
+
             <p className="text-txt-secondary max-w-sm mx-auto mb-10">
-              Hemos registrado tu solicitud con éxito. Tu reserva está en estado <span className="text-gold font-bold italic">pendiente</span>.
+              Hemos registrado tu solicitud con éxito. Guarda tu código para seguimiento.
             </p>
             <Link to="/" className="bg-gold text-bg-main py-4 px-10 rounded-sm font-bold uppercase tracking-widest hover:bg-gold-hover transition-all">
               Volver al Inicio

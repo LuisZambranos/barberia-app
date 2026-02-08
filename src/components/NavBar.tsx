@@ -63,6 +63,15 @@ const Navbar = () => {
                 Reservar Cita
               </Link>
             )}
+            {/* BOTÓN DE ACCIÓN: Visible barbero */}
+            {(role === 'barber') && (
+              <Link 
+                to="/barber"
+                className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
+              >
+                Panel de Barbero
+              </Link>
+            )}
           </nav>
 
           {/* INTERRUPTOR MÓVIL */}
@@ -101,6 +110,16 @@ const Navbar = () => {
                 className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
               >
                 Reservar Cita
+              </Link>
+            )}
+
+            {/* BOTÓN DE ACCIÓN: Visible si no hay usuario (anonimo) O si es cliente */}
+            {(role === 'barber') && (
+              <Link 
+                to="/barber" 
+                className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
+              >
+                Panel de Barbero
               </Link>
             )}
             
