@@ -7,6 +7,7 @@ import Booking from "./pages/Booking";
 import Login from "./pages/Login"; 
 import Admin from "./pages/Admin";
 import BarberPage from "./pages/BarberPage";
+import NotFound from "./pages/NotFound";
 
 function App() {
   return (
@@ -35,7 +36,7 @@ function App() {
 
           
 
-
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
