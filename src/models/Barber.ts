@@ -4,4 +4,5 @@ export interface Barber {
   role: string;
   specialty: string;
   image: string;
+  autoConfirm?: boolean; // true = Aceptación automática
 }
