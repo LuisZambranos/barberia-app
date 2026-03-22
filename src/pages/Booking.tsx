@@ -255,7 +255,7 @@ const Booking = () => {
                       })
                   ) : (
                       <p className="col-span-3 text-red-400 text-xs border border-red-500/20 bg-red-500/10 p-2 rounded">
-                          Este barbero no atiende hoy o no tiene horario configurado.
+                          Este barbero no atiende hoy o su agenda esta llena.
                       </p>
                   )}
                 </div>

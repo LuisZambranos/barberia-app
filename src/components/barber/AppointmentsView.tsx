@@ -5,6 +5,7 @@ import { db } from "../../firebase/config";
 import { type Appointment } from "../../models/Appointment"; 
 import { sendConfirmationMessage } from "../../utils/whatsapp";
 import { copyToClipboard } from "../../utils/clipboard";
+//import { useToast } from "../../context/ToastContext";
 
 // --- HELPERS PARA UX TEMPORAL ---
 const isToday = (dateString: string) => {
@@ -12,6 +13,9 @@ const isToday = (dateString: string) => {
   const date = new Date(`${dateString}T00:00:00`);
   return date.toDateString() === today.toDateString();
 };
+
+// Usamos showToast directamente Para notificar
+//const { showToast } = useToast();
 
 const isPast = (dateString: string, timeString: string) => {
     const now = new Date();
@@ -79,7 +83,6 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
   
   // Agrupar el resto por fecha (para no tener una lista infinita desordenada)
   const futureAppts = filteredAppointments.filter(a => !isToday(a.date) && !isPast(a.date, a.time));
-  const pastAppts = filteredAppointments.filter(a => !isToday(a.date) && isPast(a.date, a.time));
 
   // Función para agrupar array por fecha
   const groupAppointmentsByDate = (appts: Appointment[]) => {
@@ -91,10 +94,9 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
   };
 
   const groupedFuture = groupAppointmentsByDate(futureAppts);
-  const groupedPast = groupAppointmentsByDate(pastAppts);
 
 
-  // --- COMPONENTE DE TARJETA (Reutilizable para no duplicar código) ---
+  // --- COMPONENTE DE TARJETA ---
   const AppointmentCard = ({ appt, isDimmed = false }: { appt: Appointment, isDimmed?: boolean }) => (
     <div className={`bg-bg-card rounded-xl border border-white/5 overflow-hidden transition-all shadow-lg group ${isDimmed ? 'opacity-60 hover:opacity-100 grayscale hover:grayscale-0' : 'hover:-translate-y-1 hover:border-gold/30'}`}>
         <div className="bg-white/5 p-4 flex justify-between items-start mb-2">
@@ -207,34 +209,6 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
                     </div>
                 </section>
             )}
-
-             {/* SECCIÓN 3: HISTORIAL (Más sutil para no robar atención) */}
-             {Object.keys(groupedPast).length > 0 && (
-                <section className="pt-12 mt-12 border-t border-white/5 opacity-80 hover:opacity-100 transition-opacity duration-300">
-                    <h2 className="text-sm font-bold text-txt-muted uppercase tracking-widest mb-8">Historial de Citas</h2>
-                    <div className="space-y-10">
-                        {Object.entries(groupedPast).map(([date, appts]) => (
-                            <div key={date}>
-                                {/* DIVISOR DE FECHA SUTIL (Sin dorado) */}
-                                <div className="flex items-center gap-4 mb-4">
-                                    <div className="h-px bg-white/10 grow"></div>
-                                    <div className="bg-bg-card border border-white/10 px-4 py-1.5 rounded-full">
-                                        <h3 className="text-txt-muted font-bold text-[10px] md:text-xs uppercase tracking-[0.2em] whitespace-nowrap">
-                                            {formatDate(date)}
-                                        </h3>
-                                    </div>
-                                    <div className="h-px bg-white/10 grow"></div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                                     {appts.map(appt => <AppointmentCard key={appt.id} appt={appt} isDimmed={true} />)}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-            )}
-
         </div>
       )}
     </div>

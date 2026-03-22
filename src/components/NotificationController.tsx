@@ -1,27 +1,47 @@
-import { useEffect, useRef, useState } from "react";
-import { collection, query, where, onSnapshot, doc } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { collection, query, where, onSnapshot, doc, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
 const NotificationController = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { toast } = useToast();
   
-  // Usamos useRef para saber si es la primera carga (y no sonar con las citas viejas)
-  const isFirstLoad = useRef(true);
-  
-  // Guardamos las preferencias del barbero (si quiere sonido o no)
   const [prefs, setPrefs] = useState({ newBooking: true, cancellation: true });
+  
+  // NUEVO ESTADO: Para guardar el ID real de la base de datos
+  const [realBarberId, setRealBarberId] = useState<string | null>(null);
 
-  // 1. ESCUCHAR PREFERENCIAS DEL USUARIO
+  // 1. BUSCAR EL ID REAL DEL BARBERO POR EMAIL
   useEffect(() => {
-    // FIX TYPESCRIPT: Usamos (user as any) para poder acceder a .role sin errores
-    if (!user || (user as any).role !== 'barber') return;
+    if (!user || role !== 'barber' || !user.email) return;
 
-    const unsubPrefs = onSnapshot(doc(db, "barbers", user.uid), (doc) => {
-        if (doc.exists()) {
-            const data = doc.data();
+    const findRealBarberId = async () => {
+      try {
+        const q = query(collection(db, "barbers"), where("email", "==", user.email));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          setRealBarberId(querySnapshot.docs[0].id);
+        } else {
+          console.error("Notificaciones: No se encontró un barbero con el email", user.email);
+        }
+      } catch (error) {
+        console.error("Error buscando ID de barbero:", error);
+      }
+    };
+
+    findRealBarberId();
+  }, [user, role]);
+
+  // 2. ESCUCHAR PREFERENCIAS DEL USUARIO (Usando el ID real)
+  useEffect(() => {
+    if (!realBarberId) return;
+
+    const unsubPrefs = onSnapshot(doc(db, "barbers", realBarberId), (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
             if (data.notifications) {
                 setPrefs(data.notifications);
             }
@@ -29,43 +49,36 @@ const NotificationController = () => {
     });
 
     return () => unsubPrefs();
-  }, [user]);
+  }, [realBarberId]);
 
-  // 2. ESCUCHAR NUEVAS CITAS (Globalmente)
+  // 3. ESCUCHAR NUEVAS CITAS 
   useEffect(() => {
-    // FIX TYPESCRIPT: Lo mismo aquí, (user as any).role
-    if (!user || (user as any).role !== 'barber') return;
+    if (!realBarberId) return;
+
+    let isInitialLoad = true; 
 
     const q = query(
       collection(db, "appointments"),
-      where("barberId", "==", user.uid)
+      where("barberId", "==", realBarberId) 
     );
 
     const unsubAppts = onSnapshot(q, (snapshot) => {
-      // Solo notificamos si NO es la primera carga
-      if (!isFirstLoad.current) {
-         snapshot.docChanges().forEach((change) => {
-            // Si hay una reserva NUEVA y la preferencia está ACTIVA
-            if (change.type === "added" && prefs.newBooking) {
-                const data = change.doc.data();
-                toast.success(`¡Nueva reserva de ${data.clientName}!`);
-            }
-            
-            // Opcional: Alerta de cancelación
-            if (change.type === "modified" && change.doc.data().status === 'cancelled' && prefs.cancellation) {
-                 // toast.error(`Cita cancelada: ${change.doc.data().clientName}`);
-            }
-         });
-      } else {
-          // Ya cargó la primera vez, bajamos la bandera
-          isFirstLoad.current = false;
+      if (isInitialLoad) {
+          isInitialLoad = false;
+          return; 
       }
+
+      snapshot.docChanges().forEach((change) => {
+          if (change.type === "added" && prefs.newBooking) {
+              const data = change.doc.data();
+              toast.success(`¡Nueva reserva de ${data.clientName}!`);
+          }
+      });
     });
 
     return () => unsubAppts();
-  }, [user, prefs, toast]);
+  }, [realBarberId, prefs, toast]);
 
-  // Este componente no renderiza nada visual, es solo lógica
   return null; 
 };
 

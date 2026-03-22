@@ -20,13 +20,9 @@ export const useBarberSchedule = (barberId: string | undefined, date: string) =>
       
       try {
         // --- OPTIMIZACIÓN: PARALELISMO ---
-        // Preparamos las dos peticiones PERO NO les ponemos 'await' todavía
-        
-        // 1. Petición del Perfil (Horario)
         const barberRef = doc(db, "barbers", barberId);
         const barberPromise = getDoc(barberRef);
 
-        // 2. Petición de Citas (Ocupadas)
         const q = query(
             collection(db, "appointments"),
             where("barberId", "==", barberId),
@@ -35,30 +31,57 @@ export const useBarberSchedule = (barberId: string | undefined, date: string) =>
         );
         const appointmentsPromise = getDocs(q);
 
-        // 3. ¡DISPARAMOS AMBAS JUNTAS! (Esperamos al más lento, no a la suma de los dos)
         const [barberSnap, appointmentsSnap] = await Promise.all([
           barberPromise, 
           appointmentsPromise
         ]);
 
         // --- PROCESAMIENTO DE DATOS ---
-        
-        // A. Calcular Inicio y Fin
         let startHour = DEFAULT_START;
         let endHour = DEFAULT_END;
+        let isDayEnabled = true; // Bandera para saber si trabaja ese día
 
         if (barberSnap.exists()) {
           const data = barberSnap.data();
-          if (data.schedule && data.schedule.active) {
-            startHour = parseInt(data.schedule.start.split(":")[0]);
-            endHour = parseInt(data.schedule.end.split(":")[0]);
+          if (data.schedule) {
+            
+            // 1. Revisar si la agenda está apagada por completo (vacaciones)
+            if (data.schedule.active === false) {
+                isDayEnabled = false;
+            }
+
+            // 2. Revisar si el día específico está apagado (ej. Domingo)
+            if (data.schedule.days) {
+                // Truco: Agregamos T12:00:00 para evitar que la zona horaria nos cambie el día
+                const currentDayIndex = new Date(date + "T12:00:00").getDay(); 
+                
+                // getDay() devuelve 0 para Domingo, 1 para Lunes, etc.
+                const daysMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+                const dayKey = daysMap[currentDayIndex];
+
+                // Si en la BD ese día está en false, desactivamos el día
+                if (data.schedule.days[dayKey] === false) {
+                    isDayEnabled = false;
+                }
+            }
+
+            // 3. Asignar horas de apertura y cierre
+            if (data.schedule.start) startHour = parseInt(data.schedule.start.split(":")[0]);
+            if (data.schedule.end) endHour = parseInt(data.schedule.end.split(":")[0]);
           }
+        }
+
+        // Si el día NO está habilitado (es domingo y no trabaja), devolvemos un array vacío de inmediato
+        if (!isDayEnabled) {
+            setAvailableTimes([]);
+            setLoadingSchedule(false);
+            return;
         }
 
         // B. Listar horas ocupadas
         const takenTimes = appointmentsSnap.docs.map(doc => doc.data().time);
 
-        // C. Generar Array Final
+        // C. Generar Array Final solo si el día es laborable
         const times: string[] = [];
         for (let i = startHour; i < endHour; i++) {
           const timeSlot = `${i}:00`;
