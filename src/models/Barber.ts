@@ -21,6 +21,7 @@ export interface Barber {
   email: string;
   role: string;
   specialty: string;
+  image?: string;
   
   // Configuraciones
   autoConfirm?: boolean;

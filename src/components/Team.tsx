@@ -12,6 +12,7 @@ const TEAM_DATA: Barber[] = [
   {
     id: "javi-urban", 
     name: "Javi",
+    email: "javi@ejemplo.com", // <--- AÑADIDO
     role: "BARBER & COLOR",
     specialty: "Estilo Urbano & Colorimetría",
     image: barbero2
@@ -19,6 +20,7 @@ const TEAM_DATA: Barber[] = [
   {
     id: "andres-senior",
     name: "Andrés V.",
+    email: "andres@ejemplo.com", // <--- AÑADIDO
     role: "SENIOR STYLIST",
     specialty: "Degradados (Fade) & Diseños",
     image: barbero3 
@@ -26,6 +28,7 @@ const TEAM_DATA: Barber[] = [
   {
     id: "miguel-barba",
     name: "Miguel Ángel",
+    email: "barber@ejemplo.com", // <--- AÑADIDO
     role: "ESPECIALISTA BARBA",
     specialty: "Perfilado & Toalla Caliente",
     image: barbero4
@@ -33,6 +36,7 @@ const TEAM_DATA: Barber[] = [
   {
     id: "carlos-master",
     name: "Carlos 'El Jefe'",
+    email: "carlos@ejemplo.com", // <--- AÑADIDO
     role: "MASTER BARBER",
     specialty: "Cortes Clásicos & Navaja",
     image: barbero1 
