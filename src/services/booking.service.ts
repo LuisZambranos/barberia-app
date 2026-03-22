@@ -2,12 +2,16 @@ import { collection, doc, runTransaction } from "firebase/firestore";
 import { db } from "../firebase/config";
 import type { Service } from "../models/Service";
 import type { Barber } from "../models/Barber";
+import type { PaymentMethodType } from "../models/Appointment";
 
+// 1. ACTUALIZACIÓN DE LA INTERFAZ
+// Añadimos paymentMethod para obligar a que la vista de Booking lo envíe
 interface BookingData {
   service: Service;
   barber: Barber;
   date: string;     // YYYY-MM-DD
   time: string;     // HH:MM
+  paymentMethod: PaymentMethodType; // <--- NUEVO REQUISITO
   client: {
     name: string;
     phone: string;
@@ -18,34 +22,31 @@ interface BookingData {
 export const createAppointment = async (data: BookingData): Promise<string> => {
   const dateKey = data.date; 
   const counterRef = doc(db, "dailyCounters", dateKey);
-  // REFERENCIA AL BARBERO (Para leer su config)
   const barberRef = doc(db, "barbers", data.barber.id);
 
   try {
     const resultId = await runTransaction(db, async (transaction) => {
-      // 1. LEER DATOS (Contador y Config del Barbero)
-      // Es importante leer todo antes de escribir para que la transacción funcione bien
+      // LEER DATOS
       const counterDoc = await transaction.get(counterRef);
       const barberDoc = await transaction.get(barberRef);
       
-      // 2. DETERMINAR ESTADO INICIAL
-      // Si el barbero tiene activado autoConfirm, pasa directo a 'confirmed'
+      // ESTADO INICIAL
       const isAutoConfirm = barberDoc.exists() ? barberDoc.data().autoConfirm : false;
       const initialStatus = isAutoConfirm ? 'confirmed' : 'pending';
 
-      // 3. LÓGICA DEL CONTADOR
+      // LÓGICA DEL CONTADOR
       let newCount = 1;
       if (counterDoc.exists()) {
         newCount = counterDoc.data().count + 1;
       }
 
-      // 4. INCREMENTAR CONTADOR
+      // INCREMENTAR CONTADOR
       transaction.set(counterRef, { count: newCount });
 
-      // 5. ID VISUAL
+      // ID VISUAL
       const shortId = `#${newCount}`; 
 
-      // 6. CREAR RESERVA
+      // CREAR RESERVA CON EL MÉTODO DE PAGO
       const newAppointmentRef = doc(collection(db, "appointments"));
       const appointmentPayload = {
         shortId: shortId,
@@ -60,7 +61,8 @@ export const createAppointment = async (data: BookingData): Promise<string> => {
         clientName: data.client.name,
         clientPhone: data.client.phone,
         clientEmail: data.client.email,
-        status: initialStatus, // <--- AQUÍ USAMOS EL ESTADO DINÁMICO
+        status: initialStatus,
+        paymentMethod: data.paymentMethod, // <--- GUARDAMOS EL MÉTODO DE PAGO
         createdAt: new Date().toISOString(),
       };
 

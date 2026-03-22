@@ -1,14 +1,25 @@
+// src/models/Appointment.ts
+
+export type PaymentMethodType = 'cash' | 'transfer' | 'online';
+
 export interface Appointment {
-  id: string; // ID de Firebase 
-  shortId?: string; // ID visual: #1
-  dailySequence?: number; // número puro: 1
+  id: string;
+  barberId: string;
+  serviceId: string;
+  
   clientName: string;
-  clientEmail: string;
   clientPhone: string;
-  time: string;
+  clientEmail: string;
+  
   date: string;
+  time: string;
+  
   serviceName: string;
-  price: number | string; 
-  status: "confirmed" | "pending" | "cancelled";
-  barberName?: string;
+  price: number | string;
+  
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  shortId?: string;
+  
+  // Nuevo campo: Cómo pagará el cliente
+  paymentMethod?: PaymentMethodType; 
 }

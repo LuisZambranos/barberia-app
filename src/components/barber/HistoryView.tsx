@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DollarSign, Search, Loader2, ChevronDown, ChevronUp, CalendarDays, Scissors } from "lucide-react";
+import { DollarSign, Search, Loader2, ChevronDown, ChevronUp, CalendarDays, Scissors, Landmark, CreditCard, Wallet } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { type Appointment } from "../../models/Appointment"; 
@@ -26,6 +26,13 @@ const formatMoney = (amount: number) => {
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(amount);
 };
 
+// --- COMPONENTE VISUAL DE PAGO ---
+const PaymentBadge = ({ method }: { method?: 'cash' | 'transfer' | 'online' }) => {
+    if (method === 'transfer') return <div className="flex w-fit items-center gap-1 text-[9px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-bold uppercase tracking-wider" title="Transferencia Bancaria"><Landmark size={10}/> Transf.</div>;
+    if (method === 'online') return <div className="flex w-fit items-center gap-1 text-[9px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20 font-bold uppercase tracking-wider" title="Pago Online"><CreditCard size={10}/> Webpay</div>;
+    return <div className="flex w-fit items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider" title="Pago en Efectivo"><Wallet size={10}/> Efectivo</div>;
+};
+
 const HistoryView = ({ barberId }: { barberId: string }) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,10 +46,8 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const dbData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Appointment[];
-      // Solo nos interesan las citas de días anteriores
       const pastData = dbData.filter(a => isPastDay(a.date));
       
-      // Ordenar: del más reciente al más antiguo
       pastData.sort((a, b) => {
         if (a.date !== b.date) return b.date.localeCompare(a.date);
         return b.time.localeCompare(a.time);
@@ -61,26 +66,36 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
       );
   };
 
-  // Filtrado de búsqueda
   const filteredAppointments = appointments.filter((appt) => {
     const term = searchTerm.toLowerCase();
     return (appt.clientName?.toLowerCase().includes(term) || appt.id.toLowerCase().includes(term) || appt.date.includes(term));
   });
 
-  // AGRUPACIÓN MAGISTRAL (Mes -> Días) + Cálculos financieros
   const historyData = filteredAppointments.reduce((acc, appt) => {
       const month = getMonthYear(appt.date);
-      if (!acc[month]) acc[month] = { totalAppts: 0, totalRevenue: 0, days: {} };
+      
+      if (!acc[month]) {
+          acc[month] = { 
+              totalAppts: 0, 
+              totalRevenue: 0, 
+              revenueByMethod: { cash: 0, transfer: 0, online: 0 },
+              days: {} 
+          };
+      }
       
       acc[month].totalAppts += 1;
-      // Extraemos solo los números del string de precio para sumarlos (ej. "$15.000" -> 15000)
-      acc[month].totalRevenue += parseInt(String(appt.price).replace(/[^0-9]/g, '')) || 0;
+      
+      const priceVal = parseInt(String(appt.price).replace(/[^0-9]/g, '')) || 0;
+      acc[month].totalRevenue += priceVal;
+      
+      const method = appt.paymentMethod || 'cash';
+      acc[month].revenueByMethod[method] += priceVal;
       
       if (!acc[month].days[appt.date]) acc[month].days[appt.date] = [];
       acc[month].days[appt.date].push(appt);
       
       return acc;
-  }, {} as Record<string, { totalAppts: number, totalRevenue: number, days: Record<string, Appointment[]> }>);
+  }, {} as Record<string, { totalAppts: number, totalRevenue: number, revenueByMethod: Record<string, number>, days: Record<string, Appointment[]> }>);
 
 
   if (loading) return <div className="text-center py-20 text-gold flex justify-center"><Loader2 className="animate-spin"/> Cargando historial...</div>;
@@ -88,7 +103,6 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       
-      {/* BARRA DE BÚSQUEDA */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <Search className="h-5 w-5 text-txt-muted" />
@@ -113,12 +127,9 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
                 
                 return (
                     <div key={month} className="bg-bg-card border border-white/5 rounded-xl overflow-hidden shadow-lg transition-all">
-                        {/* CABECERA DEL MES (Acordeón) */}
-                        <button 
-                            onClick={() => toggleMonth(month)}
-                            className="w-full p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-white/5 transition-colors text-left"
-                        >
-                            <div className="flex items-center gap-3">
+                        
+                        <div className="w-full p-5 flex flex-col md:flex-row md:items-start justify-between gap-6 hover:bg-white/5 transition-colors">
+                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleMonth(month)}>
                                 <div className="p-3 bg-white/5 rounded-lg text-gold"><CalendarDays size={24}/></div>
                                 <div>
                                     <h2 className="text-lg md:text-xl font-black text-white">{month}</h2>
@@ -126,23 +137,39 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
                                 </div>
                             </div>
                             
-                            <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto border-t md:border-none border-white/5 pt-4 md:pt-0">
-                                <div className="text-left md:text-right">
-                                    <p className="text-[10px] uppercase text-txt-muted font-bold tracking-widest mb-1">Ingresos del Mes</p>
-                                    <p className="text-lg font-black text-green-400">{formatMoney(data.totalRevenue)}</p>
+                            <div className="flex flex-col md:items-end w-full md:w-auto border-t md:border-none border-white/5 pt-4 md:pt-0">
+                                <p className="text-[10px] uppercase text-txt-muted font-bold tracking-widest mb-1">Ingresos Totales</p>
+                                <div className="flex items-center gap-4 mb-3">
+                                   <p className="text-2xl font-black text-green-400">{formatMoney(data.totalRevenue)}</p>
+                                   <button onClick={() => toggleMonth(month)} className="text-white/50 bg-white/5 p-2 rounded-full hover:bg-white/10 hover:text-white transition-colors">
+                                       {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                   </button>
                                 </div>
-                                <div className="text-white/50 bg-white/5 p-2 rounded-full">
-                                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                
+                                <div className="flex flex-wrap gap-2 justify-start md:justify-end">
+                                    {data.revenueByMethod.cash > 0 && (
+                                        <div className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 font-bold">
+                                            <Wallet size={12}/> {formatMoney(data.revenueByMethod.cash)}
+                                        </div>
+                                    )}
+                                    {data.revenueByMethod.transfer > 0 && (
+                                        <div className="flex items-center gap-1 text-[10px] text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20 font-bold">
+                                            <Landmark size={12}/> {formatMoney(data.revenueByMethod.transfer)}
+                                        </div>
+                                    )}
+                                    {data.revenueByMethod.online > 0 && (
+                                        <div className="flex items-center gap-1 text-[10px] text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20 font-bold">
+                                            <CreditCard size={12}/> {formatMoney(data.revenueByMethod.online)}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        </button>
+                        </div>
 
-                        {/* CONTENIDO DESPLEGABLE (Días y Tarjetas) */}
                         {isExpanded && (
                             <div className="p-5 md:p-6 bg-black/20 border-t border-white/5 space-y-8 animate-in slide-in-from-top-4 duration-300">
                                 {Object.entries(data.days).map(([date, appts]) => (
                                     <div key={date}>
-                                        {/* DIVISOR DEL DÍA */}
                                         <div className="flex items-center gap-4 mb-4">
                                             <div className="h-px bg-white/10 grow"></div>
                                             <div className="bg-bg-main border border-white/10 px-4 py-1.5 rounded-full">
@@ -153,21 +180,27 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
                                             <div className="h-px bg-white/10 grow"></div>
                                         </div>
 
-                                        {/* LISTA MINIATURA DE CITAS (Versión compacta para historial) */}
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {appts.map(appt => (
                                                 <div key={appt.id} className="bg-bg-card border border-white/5 p-4 rounded-lg flex flex-col justify-between opacity-80 hover:opacity-100 transition-opacity">
-                                                    <div className="flex justify-between items-start mb-3">
+                                                    
+                                                    {/* NUEVA Cabecera de Tarjeta: Estado al lado del nombre */}
+                                                    <div className="flex justify-between items-start mb-4">
                                                         <div>
-                                                            <p className="text-sm font-bold text-white">{appt.clientName}</p>
-                                                            <p className="text-xs text-txt-muted flex items-center gap-1 mt-1"><Scissors size={12} className="text-gold/50"/> {appt.serviceName}</p>
+                                                            <div className="flex items-center gap-2 mb-1.5">
+                                                                <p className="text-sm font-bold text-white">{appt.clientName}</p>
+                                                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide ${appt.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                                                    {appt.status === 'confirmed' ? 'Realizada' : appt.status}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-xs text-txt-muted flex items-center gap-1"><Scissors size={12} className="text-gold/50"/> {appt.serviceName}</p>
                                                         </div>
                                                         <span className="text-xs font-black text-gold bg-gold/10 px-2 py-1 rounded">{appt.time}</span>
                                                     </div>
+                                                    
+                                                    {/* NUEVO Footer de Tarjeta: Método de pago a la izquierda, Precio a la derecha */}
                                                     <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-auto">
-                                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wide ${appt.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                                                            {appt.status === 'confirmed' ? 'Realizada' : appt.status}
-                                                        </span>
+                                                        <PaymentBadge method={appt.paymentMethod} />
                                                         <span className="text-xs font-bold text-white flex items-center gap-1"><DollarSign size={12} className="text-gold"/>{appt.price}</span>
                                                     </div>
                                                 </div>
