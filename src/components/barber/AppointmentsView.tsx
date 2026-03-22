@@ -189,13 +189,13 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
                             <div key={date} className="relative">
                                 {/* DIVISOR DE FECHA ESTILO TIMELINE */}
                                 <div className="flex items-center gap-4 mb-6">
-                                    <div className="h-px bg-gradient-to-r from-gold/40 to-transparent flex-grow"></div>
+                                    <div className="h-px bg-linear-to-r from-gold/40 to-transparent grow"></div>
                                     <div className="bg-bg-main border border-gold/40 px-5 py-2 rounded-full shadow-[0_0_15px_rgba(212,175,55,0.15)] relative z-10">
                                         <h3 className="text-gold font-black text-xs md:text-sm uppercase tracking-[0.2em] whitespace-nowrap">
                                             {formatDate(date)}
                                         </h3>
                                     </div>
-                                    <div className="h-px bg-gradient-to-l from-gold/40 to-transparent flex-grow"></div>
+                                    <div className="h-px bg-linear-to-l from-gold/40 to-transparent grow"></div>
                                 </div>
                                 
                                 {/* TARJETAS */}
@@ -217,13 +217,13 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
                             <div key={date}>
                                 {/* DIVISOR DE FECHA SUTIL (Sin dorado) */}
                                 <div className="flex items-center gap-4 mb-4">
-                                    <div className="h-px bg-white/10 flex-grow"></div>
+                                    <div className="h-px bg-white/10 grow"></div>
                                     <div className="bg-bg-card border border-white/10 px-4 py-1.5 rounded-full">
                                         <h3 className="text-txt-muted font-bold text-[10px] md:text-xs uppercase tracking-[0.2em] whitespace-nowrap">
                                             {formatDate(date)}
                                         </h3>
                                     </div>
-                                    <div className="h-px bg-white/10 flex-grow"></div>
+                                    <div className="h-px bg-white/10 grow"></div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
