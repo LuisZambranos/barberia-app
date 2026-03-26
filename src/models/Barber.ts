@@ -22,9 +22,15 @@ export interface Barber {
   role: string;
   specialty: string;
   image?: string;
+
+  // Redes sociales
+  instagram?: string;
+  whatsapp?: string;
   
   // Configuraciones
-  autoConfirm?: boolean;
+  autoConfirm?: boolean;         // 1. El Global (si está ON, confirma todo)
+  autoConfirmCash?: boolean;     // 2. Automático para Efectivo
+  autoConfirmTransfer?: boolean; // 3. Automático para Transferencias
   paymentMethods?: PaymentMethods;
   transferDetails?: TransferDetails; // Datos bancarios opcionales
   

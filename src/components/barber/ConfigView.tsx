@@ -25,6 +25,8 @@ const ConfigView = ({ barberId }: ConfigViewProps) => {
   
   // ESTADOS BÁSICOS
   const [autoConfirm, setAutoConfirm] = useState(false);
+  const [autoConfirmCash, setAutoConfirmCash] = useState(false);
+  const [autoConfirmTransfer, setAutoConfirmTransfer] = useState(false);
   const [schedule, setSchedule] = useState({ start: "10:00", end: "20:00", active: true });
   const [workDays, setWorkDays] = useState<Record<string, boolean>>({
     mon: true, tue: true, wed: true, thu: true, fri: true, sat: true, sun: false
@@ -58,6 +60,8 @@ const ConfigView = ({ barberId }: ConfigViewProps) => {
           const data = docSnap.data();
           
           if (data.autoConfirm !== undefined) setAutoConfirm(data.autoConfirm);
+          if (data.autoConfirmCash !== undefined) setAutoConfirmCash(data.autoConfirmCash);
+          if (data.autoConfirmTransfer !== undefined) setAutoConfirmTransfer(data.autoConfirmTransfer);
           
           if (data.schedule) {
             setSchedule({
@@ -102,9 +106,10 @@ const ConfigView = ({ barberId }: ConfigViewProps) => {
       const docRef = doc(db, "barbers", barberId);
       await updateDoc(docRef, {
         autoConfirm,
+        autoConfirmCash,         // <-- AGREGADO
+        autoConfirmTransfer,     // <-- AGREGADO
         notifications,
         schedule: { ...schedule, days: workDays },
-        // Guardamos las nuevas configuraciones de pago
         paymentMethods,
         transferDetails
       });
@@ -135,12 +140,44 @@ const ConfigView = ({ barberId }: ConfigViewProps) => {
           <div className="p-2 bg-gold/20 rounded-lg text-gold"><Zap size={20} /></div>
           <div>
             <h2 className="text-lg font-bold text-white">Reservas Automáticas</h2>
-            <p className="text-xs text-txt-muted">Confirmación inmediata sin revisión.</p>
+            <p className="text-xs text-txt-muted">Controla cómo entran las citas a tu agenda.</p>
           </div>
         </div>
-        <div className="bg-bg-main/50 rounded-lg p-4 border border-white/5 flex items-center justify-between">
-            <span className="text-sm font-bold text-white">Aceptación Automática</span>
-            <Toggle active={autoConfirm} onClick={() => setAutoConfirm(!autoConfirm)} />
+
+        <div className="space-y-4">
+            {/* BOTÓN GLOBAL */}
+            <div className="bg-bg-main/50 rounded-lg p-4 border border-white/5 flex items-center justify-between transition-all">
+                <div>
+                    <span className="text-sm font-bold text-white block">Aprobación Global</span>
+                    <span className="text-[10px] text-txt-muted uppercase tracking-widest mt-1">Acepta TODO automáticamente</span>
+                </div>
+                <Toggle active={autoConfirm} onClick={() => setAutoConfirm(!autoConfirm)} />
+            </div>
+
+            {/* CONTROLES POR MÉTODO DE PAGO (Solo visibles si Global está apagado) */}
+            {!autoConfirm && (
+                <div className="pl-4 border-l-2 border-white/10 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                    
+                    {/* Efectivo */}
+                    <div className="bg-bg-main/30 rounded-lg p-4 border border-white/5 flex items-center justify-between hover:bg-bg-main/50 transition-colors">
+                        <div>
+                            <span className="text-sm font-bold text-emerald-400 block">Efectivo Automático</span>
+                            <span className="text-[10px] text-txt-muted mt-1">Confirmar si pagan en el local</span>
+                        </div>
+                        <Toggle active={autoConfirmCash} onClick={() => setAutoConfirmCash(!autoConfirmCash)} />
+                    </div>
+
+                    {/* Transferencia */}
+                    <div className="bg-bg-main/30 rounded-lg p-4 border border-white/5 flex items-center justify-between hover:bg-bg-main/50 transition-colors">
+                        <div>
+                            <span className="text-sm font-bold text-blue-400 block">Transferencia Automática</span>
+                            <span className="text-[10px] text-txt-muted mt-1">Cuidado: Se confirman sin revisar banco</span>
+                        </div>
+                        <Toggle active={autoConfirmTransfer} onClick={() => setAutoConfirmTransfer(!autoConfirmTransfer)} />
+                    </div>
+
+                </div>
+            )}
         </div>
       </section>
 
@@ -188,7 +225,6 @@ const ConfigView = ({ barberId }: ConfigViewProps) => {
                   <span className="text-sm">Transferencia Bancaria</span>
                   <Toggle active={paymentMethods.transfer} onClick={() => setPaymentMethods({...paymentMethods, transfer: !paymentMethods.transfer})} />
               </div>
-              {/* NUEVO: Toggle de Pago Online */}
               <div className="flex items-center justify-between p-3 bg-bg-main/50 rounded-lg border border-white/5">
                   <span className="text-sm text-gold font-bold">Pago Online (Pasarela Web)</span>
                   <Toggle active={paymentMethods.online} onClick={() => setPaymentMethods({...paymentMethods, online: !paymentMethods.online})} />
@@ -196,7 +232,7 @@ const ConfigView = ({ barberId }: ConfigViewProps) => {
           </div>
       </section>
 
-      {/* 4. DATOS DE TRANSFERENCIA BANCARIA (Condicionado a que Transferencia esté activo) */}
+      {/* 4. DATOS DE TRANSFERENCIA BANCARIA */}
       <div className={`transition-all duration-500 overflow-hidden ${paymentMethods.transfer ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
         <section className="bg-bg-card border border-white/5 rounded-xl p-6 shadow-lg">
             <div className="flex items-center gap-3 mb-6">

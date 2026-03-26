@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { type Barber } from "../models/Barber";
+import { Instagram, MessageCircle } from "lucide-react"; // <--- Importamos los iconos
 
 // IMÁGENES LOCALES
 import barbero1 from "../assets/barbero1.jpg"; 
@@ -12,34 +13,42 @@ const TEAM_DATA: Barber[] = [
   {
     id: "javi-urban", 
     name: "Javi",
-    email: "javi@ejemplo.com", // <--- AÑADIDO
+    email: "javi@ejemplo.com", 
     role: "BARBER & COLOR",
-    specialty: "Estilo Urbano & Colorimetría",
-    image: barbero2
+    specialty: "Estilo Urbano & Colorimetría", // Lo dejamos en los datos por si se usa en otro lado, pero no se renderiza
+    image: barbero2,
+    instagram: "https://instagram.com",
+    whatsapp: "https://wa.me/56912345678"
   },
   {
     id: "andres-senior",
     name: "Andrés V.",
-    email: "andres@ejemplo.com", // <--- AÑADIDO
+    email: "andres@ejemplo.com", 
     role: "SENIOR STYLIST",
     specialty: "Degradados (Fade) & Diseños",
-    image: barbero3 
+    image: barbero3,
+    instagram: "https://instagram.com",
+    whatsapp: "https://wa.me/56912345678"
   },
   {
     id: "miguel-barba",
     name: "Miguel Ángel",
-    email: "barber@ejemplo.com", // <--- AÑADIDO
+    email: "miguel@ejemplo.com", 
     role: "ESPECIALISTA BARBA",
     specialty: "Perfilado & Toalla Caliente",
-    image: barbero4
+    image: barbero4,
+    instagram: "https://instagram.com",
+    whatsapp: "https://wa.me/56912345678"
   },
   {
     id: "carlos-master",
     name: "Carlos 'El Jefe'",
-    email: "carlos@ejemplo.com", // <--- AÑADIDO
+    email: "carlos@ejemplo.com", 
     role: "MASTER BARBER",
     specialty: "Cortes Clásicos & Navaja",
-    image: barbero1 
+    image: barbero1,
+    instagram: "https://instagram.com",
+    whatsapp: "https://wa.me/56912345678"
   }
 ];
 
@@ -57,7 +66,6 @@ const Team = () => {
   const [barbers, setBarbers] = useState<Barber[]>([]);
 
   useEffect(() => {
-    // Carga instantánea de los datos estáticos (mezclados)
     setBarbers(shuffleArray(TEAM_DATA));
   }, []);
 
@@ -68,7 +76,7 @@ const Team = () => {
         {/* TÍTULOS */}
         <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <h2 className="text-gold font-bold tracking-[0.2em] uppercase text-sm mb-2">EL EQUIPO</h2>
-          <h3 className="text-3xl font-bold text-white">Maestros de la Navaja</h3>
+          <h3 className="text-3xl font-bold text-text-primary">Maestros de la Navaja</h3>
         </div>
 
         {/* GRID LAYOUT */}
@@ -78,7 +86,7 @@ const Team = () => {
             <div key={barber.id} className="w-full animate-in zoom-in-50 duration-500">
               
               {/* TARJETA */}
-              <div className="group/card bg-bg-main rounded-xl overflow-hidden border border-white/5 hover:border-gold/30 transition-all duration-300 shadow-lg flex flex-col h-full hover:-translate-y-2 cursor-default">
+              <div className="group/card bg-bg-main rounded-xl overflow-hidden border border-white/5 hover:border-gold/30 transition-all duration-300 shadow-lg flex flex-col h-full hover:-translate-y-2">
                 
                 {/* Imagen */}
                 <div className="relative h-48 md:h-64 w-full overflow-hidden">
@@ -88,29 +96,54 @@ const Team = () => {
                     className="w-full h-full object-cover object-top transition-transform duration-700 group-hover/card:scale-110"
                     loading="lazy"
                   />
-                  {/* Degradado sutil */}
                   <div className="absolute inset-0 bg-linear-to-t from-bg-main/90 via-transparent to-transparent opacity-60"></div>
                 </div>
 
-                {/* Datos */}
-                <div className="p-4 md:p-6 text-center grow flex flex-col justify-center relative z-20 -mt-4 bg-bg-main/50 backdrop-blur-sm"> 
-                  <h4 className="text-lg md:text-xl font-bold text-txt-main mb-1 leading-tight group-hover/card:text-gold transition-colors">
-                    {barber.name}
-                  </h4>
-                  <p className="text-gold/90 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2">
-                    {barber.role}
-                  </p>
-                  <p className="text-txt-muted text-xs md:text-sm italic hidden sm:block opacity-70 group-hover/card:opacity-100 transition-opacity duration-300">
-                    {barber.specialty}
-                  </p>
-                </div>
+                {/* Datos y Redes Sociales */}
+                <div className="p-4 md:p-6 text-center flex flex-col justify-between relative z-20 -mt-4 bg-bg-main/50 backdrop-blur-sm grow"> 
+                  
+                  {/* Info Barbero */}
+                  <div>
+                    <h4 className="text-lg md:text-xl font-bold text-txt-main mb-1 leading-tight group-hover/card:text-gold transition-colors">
+                      {barber.name}
+                    </h4>
+                    <p className="text-gold/90 text-[10px] md:text-xs font-bold uppercase tracking-wider">
+                      {barber.role}
+                    </p>
+                  </div>
 
+                  {/* Redes Sociales */}
+                  <div className="flex justify-center gap-3 mt-5">
+                    {barber.instagram && (
+                      <a 
+                        href={barber.instagram} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="w-8 h-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-txt-muted hover:bg-linear-to-tr hover:from-amber-500 hover:to-pink-500 hover:text-white hover:border-transparent transition-all duration-300"
+                        title="Ver Instagram"
+                      >
+                        <Instagram size={14} />
+                      </a>
+                    )}
+                    {barber.whatsapp && (
+                      <a 
+                        href={barber.whatsapp} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="w-8 h-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-txt-muted hover:bg-green-500 hover:text-white hover:border-green-500 transition-all duration-300"
+                        title="Contactar por WhatsApp"
+                      >
+                        <MessageCircle size={14} />
+                      </a>
+                    )}
+                  </div>
+
+                </div>
               </div>
             </div>
           ))}
           
         </div>
-
       </div>
     </section>
   );

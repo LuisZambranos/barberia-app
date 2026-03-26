@@ -5,7 +5,7 @@ export type PaymentMethodType = 'cash' | 'transfer' | 'online';
 export interface Appointment {
   id: string;
   barberId: string;
-  barberName?: string;
+  barberName?: string; 
   serviceId: string;
   
   clientName: string;
@@ -16,11 +16,17 @@ export interface Appointment {
   time: string;
   
   serviceName: string;
-  price: number | string;
+  price: number | string; // Este será el Total (Servicio + Extra Barba)
   
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   shortId?: string;
+  dailySequence?: number; 
+  createdAt?: string;     
   
-  // Nuevo campo: Cómo pagará el cliente
   paymentMethod?: PaymentMethodType; 
+
+  // --- NUEVO: SERVICIOS PERSONALIZADOS Y EXTRAS ---
+  basePrice?: number;         // El precio base del paquete seleccionado
+  selectedItems?: string[];   // Las casillas que el cliente SÍ dejó marcadas
+  hasBeardAddon?: boolean;    // true si agregó el Corte de Barba (+ $5.000)
 }

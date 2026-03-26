@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore'; 
 import { db } from '../firebase/config';
 import { Link } from 'react-router-dom';
-import { Copy, CheckCircle2 } from 'lucide-react'; // <---Íconos para la vista de pagos
+// Añadimos iconos para los checkboxes y el botón de barba
+import { Copy, CheckCircle2, PlusCircle, Scissors } from 'lucide-react'; 
 
 import { useBarberSchedule } from "../hooks/useBarberSchedule";
 import { createAppointment } from '../services/booking.service';
-import { copyToClipboard } from '../utils/clipboard'; // <--- Utilidad de copiado
+import { copyToClipboard } from '../utils/clipboard'; 
 
 import type { Service } from '../models/Service';
 import type { Barber } from '../models/Barber';
-import type { PaymentMethodType } from '../models/Appointment'; // <--- Tipado del pago
+import type { PaymentMethodType } from '../models/Appointment'; 
 
 // IMÁGENES
 import barbero1 from "../assets/barbero1.jpg";
@@ -44,19 +45,19 @@ const Booking = () => {
   const [barbers, setBarbers] = useState<Barber[]>([]);
   
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  
+  // --- NUEVO: ESTADOS DEL COTIZADOR (FASE 3) ---
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [hasBeardAddon, setHasBeardAddon] = useState(false);
+
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   
-  // --- NUEVO: ESTADOS DEL PAGO ---
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType | null>(null);
   const [copiedDetail, setCopiedDetail] = useState<string | null>(null);
 
-  const [clientData, setClientData] = useState({
-    name: '',
-    phone: '',
-    email: ''
-  });
+  const [clientData, setClientData] = useState({ name: '', phone: '', email: '' });
 
   const { availableTimes, loadingSchedule } = useBarberSchedule(selectedBarber?.id, selectedDate);
 
@@ -64,7 +65,10 @@ const Booking = () => {
     const fetchData = async () => {
       try {
         const sSnap = await getDocs(collection(db, "services"));
-        setServices(sSnap.docs.map(d => ({ id: d.id, ...d.data() } as Service)));
+        // Ordenamos los servicios por precio de menor a mayor para que se vean organizados
+        let loadedServices = sSnap.docs.map(d => ({ id: d.id, ...d.data() } as Service));
+        loadedServices.sort((a, b) => a.price - b.price);
+        setServices(loadedServices);
         
         const bSnap = await getDocs(collection(db, "barbers"));
         let loadedBarbers = bSnap.docs.map(d => ({ id: d.id, ...d.data() } as Barber));
@@ -78,20 +82,34 @@ const Booking = () => {
     fetchData();
   }, []);
 
-// --- NUEVA FUNCIÓN: COPIA FORMATEADA PARA APPS BANCARIAS ---
+  // --- NUEVAS FUNCIONES DEL COTIZADOR ---
+  const handleServiceSelect = (service: Service) => {
+    setSelectedService(service);
+    // Al elegir un servicio, marcamos todas sus opciones por defecto
+    setSelectedItems(service.includes || []); 
+    setHasBeardAddon(false);
+  };
+
+  const toggleItem = (item: string) => {
+    setSelectedItems(prev => 
+      prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
+    );
+  };
+
+  // Calculamos el precio en tiempo real
+  const currentTotal = (selectedService?.price || 0) + (hasBeardAddon ? 5000 : 0);
+  // --------------------------------------
+
   const handleCopyAllBankDetails = () => {
     if (!bankDetails) return;
     
-    // 1. Limpiamos y formateamos el RUT para asegurar que tenga el guion
     let cleanRut = bankDetails.rut.replace(/[^0-9kK]/g, '');
-    let formattedRut = bankDetails.rut; // Por defecto
+    let formattedRut = bankDetails.rut; 
     if (cleanRut.length > 1) {
-       // Toma todo menos el último caracter, le pone un guion, y agrega el último caracter
        formattedRut = cleanRut.slice(0, -1) + '-' + cleanRut.slice(-1);
     }
 
     // 2. TEXTO SIN SANGRÍA (IMPORTANTE: Debe estar pegado a la izquierda)
-    // Usamos 'Cuenta:' en vez de 'Número de cuenta:' porque los bancos lo leen mejor.
     const textToCopy = `Nombre: ${bankDetails.fullName}
 RUT: ${formattedRut}
 Banco: ${bankDetails.bank}
@@ -106,23 +124,31 @@ Correo: ${bankDetails.email || ''}`.trim();
     }
   };
 
-  const handleFinalizeBooking = async () => {
-    // Verificamos también que se haya seleccionado un método de pago
+const handleFinalizeBooking = async () => {
     if (!selectedService || !selectedBarber || !selectedTime || !selectedPaymentMethod) return;
 
     setIsSubmitting(true);
     try {
+      // --- CALCULAR EL TOTAL AQUÍ ANTES DE ENVIAR ---
+      const finalPrice = selectedService.price + (hasBeardAddon ? 5000 : 0);
+
       const ticketId = await createAppointment({
         service: selectedService,
         barber: selectedBarber,
         date: selectedDate,
         time: selectedTime,
-        paymentMethod: selectedPaymentMethod, // <--- Enviamos el pago al backend
+        paymentMethod: selectedPaymentMethod,
+        
+        // --- NUEVOS DATOS ENVIADOS ---
+        selectedItems: selectedItems,
+        hasBeardAddon: hasBeardAddon,
+        totalPrice: finalPrice,
+
         client: clientData
       });
 
       setSuccessId(ticketId);
-      setStep(6); // El éxito ahora es el paso 6
+      setStep(6); 
     } catch (error) {
       console.error("Error al guardar la reserva:", error);
       alert("Hubo un error al procesar tu reserva. Intenta nuevamente.");
@@ -137,7 +163,6 @@ Correo: ${bankDetails.email || ''}`.trim();
     </div>
   );
 
-  // Variable para verificar qué métodos de pago habilitó el barbero seleccionado
   const availableMethods = selectedBarber?.paymentMethods || { cash: true, transfer: true, online: false };
   const bankDetails = selectedBarber?.transferDetails;
 
@@ -158,7 +183,7 @@ Correo: ${bankDetails.email || ''}`.trim();
               { id: 3, label: "03 Fecha & Hora" },
               { id: 4, label: "04 Tus Datos" },
               { id: 5, label: "05 Pago" },        
-              { id: 6, label: "06 Confirmación" }
+              { id: 6, label: "06 Confirmación" } 
             ].map((s) => {
               const isAvailable = 
                 (s.id === 1) ||
@@ -186,22 +211,117 @@ Correo: ${bankDetails.email || ''}`.trim();
           </div>
         </div>
 
-        {/* --- PASO 1, PASO 2 y PASO 3 SE MANTIENEN IGUAL --- */}
+        {/* --- PASO 1: EL NUEVO COTIZADOR DE SERVICIOS --- */}
         {step === 1 && ( 
-             <div className="max-w-2xl mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               {services.map(s => (
-                 <div key={s.id} onClick={() => setSelectedService(s)} className={`p-6 border rounded-sm cursor-pointer transition-all duration-300 flex justify-between items-center ${selectedService?.id === s.id ? 'border-gold bg-gold/5 shadow-[0_0_25px_rgba(212,175,55,0.2)] scale-[1.02]' : 'border-white/10 bg-white/2 hover:border-gold/50'}`}>
-                   <div><h3 className="text-xl font-bold mb-1">{s.name}</h3><p className="text-sm text-txt-secondary uppercase tracking-tighter">{s.duration} MINUTOS DE SESIÓN</p></div>
-                   <div className="flex flex-col items-end"><p className="text-gold font-black text-2xl">${s.price.toLocaleString()}</p>{selectedService?.id === s.id && (<span className="text-green-400 text-xs mt-1 font-semibold">SELECCIONADO</span>)}</div>
-                 </div>
-               ))}
-               <div className="flex flex-col space-y-4 mt-8"> 
-                 <button onClick={() => setStep(2)} disabled={!selectedService} className="w-full bg-gold text-bg-main p-4 rounded-sm font-black text-sm uppercase tracking-[0.2em] disabled:opacity-30 disabled:cursor-not-allowed transition-all hover:bg-gold-hover active:scale-95">Siguiente: Elegir Barbero</button>
-                 <Link to="/" className="w-full border border-white/20 hover:border-gold hover:text-gold text-txt-main font-bold py-4 px-6 rounded-sm transition-all uppercase tracking-wider backdrop-blur-sm flex items-center justify-center">Inicio</Link>
-               </div>
-             </div>
+              <div className="max-w-2xl mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
+                
+                {services.map(s => {
+                  const isSelected = selectedService?.id === s.id;
+                  const isBasic = s.name.toLowerCase().includes('basico'); // Identificador del servicio clásico
+                  
+                  return (
+                  <div key={s.id} className={`border rounded-xl transition-all duration-500 overflow-hidden ${isSelected ? 'border-gold bg-gold/5 shadow-[0_0_25px_rgba(212,175,55,0.15)] ring-1 ring-gold/50' : 'border-white/10 bg-white/2 hover:border-white/20'}`}>
+                    
+                    {/* Cabecera Clickable (Siempre visible) */}
+                    <div onClick={() => handleServiceSelect(s)} className="p-6 cursor-pointer flex justify-between items-start">
+                      <div className="flex-1 pr-4">
+                        <h3 className="text-xl font-bold mb-1 text-white">{s.name}</h3>
+                        
+                        <p className="text-xs text-txt-muted mb-3 leading-relaxed">
+                          {s.description}
+                        </p>
+
+                        {/* ALERTA VISUAL ANTI-CONFUSIONES (Solo sale en el Básico) */}
+                        {isBasic && (
+                          <div className="mb-3">
+                            <span className="inline-block text-[9px] font-bold text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded tracking-wide">
+                              ⚠️ SOLO CORTES CLÁSICOS (Para Fade elige Bronze o superior)
+                            </span>
+                          </div>
+                        )}
+
+                        <p className="text-xs text-txt-secondary uppercase tracking-widest flex items-center gap-1"><Scissors size={12}/> {s.duration} MINUTOS</p>
+                      </div>
+                      
+                      <div className="flex flex-col items-end shrink-0">
+                        <p className="text-gold font-black text-2xl">${s.price.toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                   {/* Cuerpo Expandible (Cotizador) */}
+                    <div className={`transition-all duration-500 ease-in-out bg-black/20 ${isSelected ? 'max-h-[1000px] opacity-100 border-t border-gold/20' : 'max-h-0 opacity-0'}`}>
+                      <div className="p-6">
+                        
+                        <p className="text-[10px] text-txt-muted uppercase tracking-widest font-bold mb-4">Personaliza tu paquete (Desmarca lo que no desees):</p>
+                        
+                        {/* NOTA FIJA DINÁMICA: El corte siempre va incluido */}
+                        <div className="flex items-center gap-3 mb-3 p-3 rounded-lg border bg-gold/5 border-gold/20 opacity-80 cursor-default">
+                          <CheckCircle2 size={18} className="text-gold" />
+                          <span className="text-sm font-medium text-white italic">
+                            {isBasic ? 'Corte Clásico (No incluye degradado)' : 'Corte Degradado / Fade'} 
+                            <span className="text-txt-muted text-xs normal-case ml-2">- Base del servicio</span>
+                          </span>
+                        </div>
+
+                        {/* CHECKBOXES DINÁMICOS */}
+                        {s.includes && s.includes.length > 0 && (
+                          <div className="mb-6 space-y-3">
+                                {s.includes.map(item => {
+                                  const isChecked = selectedItems.includes(item);
+                                  return (
+                                    <div 
+                                      key={item} 
+                                      onClick={() => toggleItem(item)}
+                                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isChecked ? 'bg-gold/10 border-gold/30 text-white' : 'bg-white/5 border-white/5 text-txt-muted hover:bg-white/10'}`}
+                                    >
+                                        {isChecked ? <CheckCircle2 size={18} className="text-gold" /> : <div className="w-[18px] h-[18px] rounded-full border-2 border-white/20"></div>}
+                                        <span className={`text-sm font-medium ${!isChecked && 'line-through'}`}>{item}</span>
+                                    </div>
+                                  )
+                                })}
+                          </div>
+                        )}
+
+                        {/* Botón Global de Addon (Corte de Barba) */}
+                        <div 
+                          onClick={() => setHasBeardAddon(!hasBeardAddon)}
+                          className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${hasBeardAddon ? 'bg-green-500/10 border-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.2)]' : 'bg-white/5 border-white/10 text-txt-muted hover:border-white/30'}`}
+                        >
+                            <div className="flex items-center gap-3">
+                              <PlusCircle size={20} className={hasBeardAddon ? "text-green-500" : "text-white/40"} />
+                              <div>
+                                <p className="font-bold text-sm">Corte de Barba Adicional</p>
+                                <p className="text-[10px] uppercase tracking-widest">Añadir a tu servicio</p>
+                              </div>
+                            </div>
+                            <p className={`font-black ${hasBeardAddon ? "text-green-400" : "text-white"}`}>+$5.000</p>
+                        </div>
+
+                      </div>
+                    </div>
+
+                  </div>
+                  )
+                })}
+
+               {/* Botonera Fija Abajo */}
+                {selectedService && (
+                  <div className="fixed bottom-0 left-0 right-0 bg-bg-main/90 backdrop-blur-xl border-t border-white/10 p-4 md:p-6 z-50 animate-in slide-in-from-bottom-full">
+                    <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-[10px] text-txt-muted uppercase tracking-widest font-bold">Total a Pagar</p>
+                          <p className="text-2xl font-black text-gold">${currentTotal.toLocaleString()}</p>
+                        </div>
+                        <button onClick={() => setStep(2)} className="bg-gold text-bg-main px-8 py-4 rounded-lg font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-gold/20 hover:bg-gold-hover hover:-translate-y-1 transition-all">
+                          Siguiente Paso
+                        </button>
+                    </div>
+                  </div>
+                )}
+              </div>
         )}
 
+        {/* --- PASOS DEL 2 AL 6 (SE MANTIENEN IGUAL QUE ANTES) --- */}
         {step === 2 && ( 
              <div className="w-full animate-in fade-in slide-in-from-right-4 duration-500">
                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -231,7 +351,8 @@ Correo: ${bankDetails.email || ''}`.trim();
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xl font-black text-gold">${selectedService?.price.toLocaleString()}</p>
+                {/* Mostramos el total actualizado aquí también */}
+                <p className="text-xl font-black text-gold">${currentTotal.toLocaleString()}</p>
               </div>
             </div>
 
@@ -296,7 +417,6 @@ Correo: ${bankDetails.email || ''}`.trim();
           </div>
         )}
 
-        {/* PASO 4: DATOS DEL CLIENTE  */}
         {step === 4 && (
           <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-500">
             <h2 className="text-2xl font-bold text-gold text-center mb-8 uppercase tracking-widest">Tus Datos</h2>
@@ -312,14 +432,12 @@ Correo: ${bankDetails.email || ''}`.trim();
           </div>
         )}
 
-        {/* --- PASO 5 - MÉTODO DE PAGO --- */}
         {step === 5 && (
           <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-500">
             <h2 className="text-2xl font-bold text-gold text-center mb-2 uppercase tracking-widest">Método de Pago</h2>
             <p className="text-center text-txt-muted text-sm mb-8">Selecciona cómo deseas abonar tu servicio.</p>
 
             <div className="space-y-4">
-              {/* Opción Efectivo */}
               {availableMethods.cash && (
                 <div 
                   onClick={() => setSelectedPaymentMethod('cash')}
@@ -336,7 +454,6 @@ Correo: ${bankDetails.email || ''}`.trim();
                 </div>
               )}
 
-              {/* Opción Pago Online (Visual/Pasarela Futura) */}
               {availableMethods.online && (
                  <div 
                  onClick={() => setSelectedPaymentMethod('online')}
@@ -353,12 +470,10 @@ Correo: ${bankDetails.email || ''}`.trim();
                </div>
               )}
 
-              {/* Opción Transferencia */}
               {availableMethods.transfer && (
                 <div className={`transition-all duration-300 border rounded-sm overflow-hidden
                     ${selectedPaymentMethod === 'transfer' ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(212,175,55,0.2)]' : 'border-white/10 bg-white/2 hover:border-gold/30'}`}>
                   
-                  {/* Cabecera del botón Transferencia */}
                   <div 
                     onClick={() => setSelectedPaymentMethod('transfer')}
                     className="p-6 cursor-pointer flex items-center justify-between"
@@ -368,18 +483,16 @@ Correo: ${bankDetails.email || ''}`.trim();
                       <p className="text-xs text-txt-muted">Realiza el abono antes de tu cita y asegura tu hora.</p>
                     </div>
                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPaymentMethod === 'transfer' ? 'border-gold bg-gold' : 'border-white/20'}`}>
-                        {selectedPaymentMethod === 'transfer' && <CheckCircle2 size={16} className="text-bg-main" />}
+                       {selectedPaymentMethod === 'transfer' && <CheckCircle2 size={16} className="text-bg-main" />}
                     </div>
                   </div>
 
-                  {/* Datos del Banco Desplegables */}
                   <div className={`transition-all duration-500 ${selectedPaymentMethod === 'transfer' ? 'max-h-[500px] border-t border-gold/20' : 'max-h-0'}`}>
-                      <div className="p-6">
+                     <div className="p-6">
                         <p className="text-xs text-gold uppercase tracking-widest font-bold mb-4">Datos para transferir</p>
                         
                         {bankDetails?.accountNumber ? (
                           <div className="space-y-3">
-                            {/* Datos limpios sin botones individuales */}
                             <div className="flex justify-between items-center border-b border-white/5 pb-2">
                               <span className="text-sm text-txt-muted">RUT</span>
                               <span className="text-sm font-mono text-white">{bankDetails.rut}</span>
@@ -401,7 +514,6 @@ Correo: ${bankDetails.email || ''}`.trim();
                               <span className="text-sm text-white">{bankDetails.fullName}</span>
                             </div>
 
-                            {/* BOTÓN COPIAR TODO */}
                             <button 
                                 type="button" 
                                 onClick={handleCopyAllBankDetails}
@@ -424,7 +536,7 @@ Correo: ${bankDetails.email || ''}`.trim();
                         ) : (
                           <p className="text-sm text-red-400 italic">El barbero aún no configura sus datos bancarios.</p>
                         )}
-                      </div>
+                     </div>
                   </div>
                 </div>
               )}
@@ -432,11 +544,11 @@ Correo: ${bankDetails.email || ''}`.trim();
 
             <div className="flex flex-col sm:flex-row gap-4 border-t border-white/10 mt-8 pt-6">
               <button 
-                onClick={handleFinalizeBooking} // <--- EL SUBMIT SE HACE AQUÍ AHORA
+                onClick={handleFinalizeBooking} 
                 disabled={!selectedPaymentMethod || isSubmitting}
                 className="w-full bg-gold text-bg-main p-4 rounded-sm font-black text-sm uppercase tracking-[0.2em] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gold-hover transition-all shadow-xl shadow-gold/20 flex justify-center items-center"
               >
-                {isSubmitting ? "Procesando Reserva..." : "Confirmar Reserva"}
+                {isSubmitting ? "Procesando Reserva..." : `Confirmar por $${currentTotal.toLocaleString()}`}
               </button>
               <button onClick={() => setStep(4)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all">
                 Regresar
@@ -445,13 +557,11 @@ Correo: ${bankDetails.email || ''}`.trim();
           </div>
         )}
 
-        {/* --- PASO 6: ÉXITO  --- */}
         {step === 6 && (
              <div className="text-center py-20 animate-in zoom-in-95 duration-700">
                <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-[0_0_30px_rgba(34,197,94,0.2)]">✓</div>
                <h2 className="text-3xl font-black mb-4 uppercase tracking-tighter text-txt-main">¡Reserva Solicitada!</h2>
                
-               {/* Mensaje dinámico según pago */}
                {selectedPaymentMethod === 'transfer' && (
                   <p className="text-gold text-sm font-bold mb-6">Recuerda realizar tu transferencia para asegurar la hora.</p>
                )}
