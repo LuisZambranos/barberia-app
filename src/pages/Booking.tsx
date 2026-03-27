@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore'; 
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore'; 
 import { db } from '../firebase/config';
 import { Link } from 'react-router-dom';
-// Añadimos iconos para los checkboxes y el botón de barba
 import { Copy, CheckCircle2, PlusCircle, Scissors } from 'lucide-react'; 
+import { useAuth } from '../context/AuthContext';
 
 import { useBarberSchedule } from "../hooks/useBarberSchedule";
 import { createAppointment } from '../services/booking.service';
@@ -58,6 +58,34 @@ const Booking = () => {
   const [copiedDetail, setCopiedDetail] = useState<string | null>(null);
 
   const [clientData, setClientData] = useState({ name: '', phone: '', email: '' });
+  // --- NUEVO: AUTOCOMPLETADO DEL CRM ---
+  const { user } = useAuth(); // Obtenemos el usuario activo
+
+  useEffect(() => {
+    if (user) {
+      const loadUserData = async () => {
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            // Si el documento existe, prellenamos el formulario automáticamente
+            setClientData({
+              name: data.name || '',
+              phone: data.phone || '',
+              email: user.email || ''
+            });
+          } else {
+            // Por si acaso no tiene nombre, al menos le ponemos su correo
+            setClientData(prev => ({ ...prev, email: user.email || '' }));
+          }
+        } catch (error) {
+          console.error("Error cargando perfil del CRM:", error);
+        }
+      };
+      loadUserData();
+    }
+  }, [user]);
+  // --------------------------------------
 
   const { availableTimes, loadingSchedule } = useBarberSchedule(selectedBarber?.id, selectedDate);
 
@@ -144,7 +172,8 @@ const handleFinalizeBooking = async () => {
         hasBeardAddon: hasBeardAddon,
         totalPrice: finalPrice,
 
-        client: clientData
+        client: clientData,
+        clientId: user?.uid
       });
 
       setSuccessId(ticketId);
@@ -419,7 +448,18 @@ const handleFinalizeBooking = async () => {
 
         {step === 4 && (
           <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-500">
-            <h2 className="text-2xl font-bold text-gold text-center mb-8 uppercase tracking-widest">Tus Datos</h2>
+            <h2 className="text-2xl font-bold text-gold text-center mb-2 uppercase tracking-widest">Tus Datos</h2>
+            
+            {/* NUEVO: Mensaje dinámico si el usuario está logueado */}
+            {user ? (
+               <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-lg mb-8 flex items-center justify-center gap-2">
+                  <CheckCircle2 size={16} />
+                  <span className="text-xs font-bold uppercase tracking-widest">Perfil Cargado Automáticamente</span>
+               </div>
+            ) : (
+               <p className="text-center text-txt-muted text-sm mb-8">Ingresa tus datos para continuar.</p>
+            )}
+
             <form onSubmit={(e) => { e.preventDefault(); setStep(5); }} className="space-y-6">
               <div><label className="block text-[10px] font-bold text-gold uppercase tracking-[0.2em] mb-2">Nombre Completo</label><input required type="text" value={clientData.name} onChange={(e) => setClientData({...clientData, name: e.target.value})} className="w-full bg-white/5 border border-white/10 p-4 rounded-sm focus:border-gold outline-none transition-all" placeholder="Ej: Juan Pérez" /></div>
               <div><label className="block text-[10px] font-bold text-gold uppercase tracking-[0.2em] mb-2">Teléfono</label><input required type="tel" value={clientData.phone} onChange={(e) => setClientData({...clientData, phone: e.target.value})} className="w-full bg-white/5 border border-white/10 p-4 rounded-sm focus:border-gold outline-none transition-all" placeholder="+56 9 ..." /></div>

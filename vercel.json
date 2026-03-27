@@ -1,8 +1,8 @@
 {
-  "rewrites": [
+  "crons": [
     {
-      "source": "/(.*)",
-      "destination": "/"
+      "path": "/api/cron-reminders",
+      "schedule": "0 10 * * *"
     }
   ]
 }
