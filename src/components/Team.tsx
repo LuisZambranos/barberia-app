@@ -3,10 +3,10 @@ import { type Barber } from "../models/Barber";
 import { Instagram, MessageCircle } from "lucide-react"; // <--- Importamos los iconos
 
 // IMÁGENES LOCALES
-import barbero1 from "../assets/barbero1.jpg"; 
-import barbero2 from "../assets/barbero2.jpg"; 
-import barbero3 from "../assets/barbero3.jpg"; 
-import barbero4 from "../assets/barbero4.jpg"; 
+import barbero1 from "../assets/Simon_barber.webp"; 
+import barbero2 from "../assets/Alvaro_barber.webp"; 
+import barbero3 from "../assets/Reynold_barber.webp"; 
+import barbero4 from "../assets/Javier_barber.webp"; 
 
 // DATOS ESTÁTICOS Barberos
 const TEAM_DATA: Barber[] = [

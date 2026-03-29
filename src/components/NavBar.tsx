@@ -24,7 +24,7 @@ const Navbar = () => {
           {/* LOGOTIPO */}
           <div className="shrink-0 flex items-center">
             <Link to="/" className="text-2xl font-bold tracking-widest text-txt-main">
-              BARBER <span className="text-gold">SHOP</span>
+              AJ <span className="text-gold">STUDIO</span>
             </Link>
           </div>
 

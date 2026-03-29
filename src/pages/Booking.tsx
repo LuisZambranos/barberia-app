@@ -14,10 +14,10 @@ import type { Barber } from '../models/Barber';
 import type { PaymentMethodType } from '../models/Appointment'; 
 
 // IMÁGENES
-import barbero1 from "../assets/barbero1.jpg";
-import barbero2 from "../assets/barbero2.jpg";
-import barbero3 from "../assets/barbero3.jpg";
-import barbero4 from "../assets/barbero4.jpg";
+import barbero1 from "../assets/Simon_barber.webp";
+import barbero2 from "../assets/Alvaro_barber.webp";
+import barbero3 from "../assets/Reynold_barber.webp";
+import barbero4 from "../assets/Javier_barber.webp";
 
 const BARBER_PHOTOS: Record<string, string> = {
   "A91rn25WwfZq2hPYvEnZ": barbero1,
@@ -356,8 +356,23 @@ const handleFinalizeBooking = async () => {
                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                  {barbers.map(b => (
                    <div key={b.id} onClick={() => setSelectedBarber(b)} className={`p-4 border rounded-sm cursor-pointer transition-all duration-300 text-center flex flex-col items-center h-full justify-between hover:-translate-y-1 ${selectedBarber?.id === b.id ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(212,175,55,0.3)] ring-1 ring-gold' : 'border-white/10 bg-white/2 hover:border-gold/50 hover:bg-white/5'}`}>
-                     <div className="mb-3"><div className="w-20 h-20 md:w-24 md:h-24 bg-bg-main border border-white/10 rounded-full mx-auto flex items-center justify-center overflow-hidden shadow-lg"><img src={BARBER_PHOTOS[b.id] || "https://via.placeholder.com/150"} alt={b.name} className="w-full h-full object-cover object-top transition-transform duration-500 hover:scale-110" /></div></div>
-                     <div><h3 className="font-bold text-sm md:text-lg mb-1 text-txt-main uppercase tracking-tight leading-tight">{b.name.replace("PRUEBA", "")}</h3><p className="text-[10px] text-gold font-bold uppercase tracking-widest mb-2 truncate px-1">{b.role}</p><p className="text-txt-muted text-[10px] leading-tight hidden sm:block">{b.specialty}</p></div>
+                     
+                     {/* --- CONTENEDOR DE IMAGEN ACTUALIZADO --- */}
+                     <div className="mb-4 w-full aspect-square max-w-[120px] bg-bg-main border border-white/10 rounded-2xl mx-auto overflow-hidden shadow-lg">
+                       <img 
+                         src={BARBER_PHOTOS[b.id] || "https://via.placeholder.com/150"} 
+                         alt={b.name} 
+                         className="w-full h-full object-cover object-top transition-transform duration-500 hover:scale-110" 
+                         style={{ imageRendering: '-webkit-optimize-contrast' }} 
+                       />
+                     </div>
+                     {/* -------------------------------------- */}
+
+                     <div>
+                       <h3 className="font-bold text-sm md:text-lg mb-1 text-txt-main uppercase tracking-tight leading-tight">{b.name.replace("PRUEBA", "")}</h3>
+                       <p className="text-[10px] text-gold font-bold uppercase tracking-widest mb-2 truncate px-1">{b.role}</p>
+                       <p className="text-txt-muted text-[10px] leading-tight hidden sm:block">{b.specialty}</p>
+                     </div>
                      {selectedBarber?.id === b.id && (<div className="mt-3 w-3 h-3 bg-gold rounded-full animate-bounce"></div>)}
                    </div>
                  ))}
