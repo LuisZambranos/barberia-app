@@ -3,11 +3,6 @@ import { Link } from 'react-router-dom';
 import { type Service } from '../models/Service';
 
 //  IMÁGENES 
-import perfiladoBarba from '../assets/perfiladoBarba.jpg';
-import servicioCompleto from '../assets/completo.jpg';
-
-import corteDegradado from '../assets/corte.jpg';
-
 import clasico from '../assets/clasico.jpg';
 import bronze from '../assets/bronze.jpeg';
 import plata from '../assets/plata.jpg';
