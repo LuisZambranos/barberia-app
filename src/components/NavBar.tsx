@@ -21,10 +21,25 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           
-          {/* LOGOTIPO */}
+          {/* LOGOTIPO AJ STUDIO */}
           <div className="shrink-0 flex items-center">
-            <Link to="/" className="text-2xl font-bold tracking-widest text-txt-main">
-              AJ <span className="text-gold">STUDIO</span>
+            <Link to="/" className="flex items-center gap-3 group">
+              
+              {/* Opcional: Si el cliente insiste en el logo gráfico, usa esta imagen junto al texto. 
+                  Asegúrate de tener un logo optimizado (.png transparente o .svg) en public o assets.
+                  Si el logo no suma, simplemente borra o comenta esta línea <img />. */}
+              {/* <img src="/ruta-al-logo-aj.png" alt="AJ Studio Logo" className="h-10 w-auto object-contain transition-transform group-hover:scale-105" /> */}
+
+              {/* Tratamiento Tipográfico Premium */}
+              <div className="flex flex-col justify-center mt-1">
+                <span className="text-2xl font-black tracking-widest text-txt-main leading-none">
+                  AJ <span className="text-gold font-light">STUDIO</span>
+                </span>
+                {/* Un pequeño subtítulo le da un toque muy corporativo y llena el espacio visualmente */}
+                <span className="text-[9px] text-gold/80 tracking-[0.35em] font-bold uppercase mt-1">
+                  Barbería & Estilo
+                </span>
+              </div>
             </Link>
           </div>
 

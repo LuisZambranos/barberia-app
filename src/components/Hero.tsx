@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import hero from '../assets/AJ-Hero.jpeg';
 
 const Hero = () => {
   return (
@@ -6,11 +7,11 @@ const Hero = () => {
     <section className="relative h-screen flex items-center justify-center overflow-hidden" id='hero'>
       
       {/* IMAGEN DE FONDO Y CAPA DE OSCURECIMIENTO */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-x-0 bottom-0 top-20 z-0">
         <img 
-          src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?q=80&w=2074&auto=format&fit=crop" 
+          src={hero} 
           alt="Interior Barbería" 
-          className="w-full h-full object-cover object-center"
+          className="w-full h-full object-cover object-top"
         />
         {/* Overlay oscuro usando la variable de fondo principal con opacidad */}
         <div className="absolute inset-0 bg-bg-main/80"></div>

@@ -4,34 +4,58 @@ import { type Service } from '../models/Service';
 
 //  IMÁGENES 
 import perfiladoBarba from '../assets/perfiladoBarba.jpg';
-import corteClasico from '../assets/corte.jpg';
 import servicioCompleto from '../assets/completo.jpg';
+
+import corteDegradado from '../assets/corte.jpg';
+
+import clasico from '../assets/clasico.jpg';
+import bronze from '../assets/bronze.jpeg';
+import plata from '../assets/plata.jpg';
+import gold from '../assets/gold.jpg';
+import premium from '../assets/premiun.jpg';
 
 // DATOS ESTÁTICOS (Carga inmediata, sin Firebase, con tus fotos)
 const SERVICES_DATA: Service[] = [
-  {
-    id: "corte-clasico",
-    name: "Corte Clásico",
-    price: 15000,
-    duration: 45,
-    description: "Corte a tijera o máquina con acabados precisos. Incluye lavado y peinado.",
-    image: corteClasico
+{ 
+    id: '1', 
+    name: 'A&J Básico', 
+    price: 10000, 
+    duration: 30, 
+    description: 'Corte clásico y la mejor calidad.',
+    image: clasico
   },
-  {
-    id: "perfilado-barba",
-    name: "Perfilado de Barba",
-    price: 12000,
-    duration: 30,
-    description: "Ritual de toalla caliente, aceites esenciales y navaja para un perfilado perfecto.",
-    image: perfiladoBarba
+  { 
+    id: '2', 
+    name: 'A&J Bronze', 
+    price: 12000, 
+    duration: 45, 
+    description: 'Corte de cabello degradado, perfilado de cejas, lavado capilar, mascarilla facial.',
+    image: bronze
+
   },
-  {
-    id: "servicio-completo",
-    name: "Servicio Completo",
-    price: 25000,
-    duration: 60,
-    description: "La experiencia VIP: Corte + Barba + Mascarilla negra + Bebida de cortesía.",
-    image: servicioCompleto
+  { 
+    id: '3', 
+    name: 'A&J Plata', 
+    price: 15000, 
+    duration: 50, 
+    description: 'Corte de cabello degradado, perfilado de cejas, lavado capilar, mascarilla facial, masajeador de manos.', 
+    image: plata
+  },
+  { 
+    id: '4', 
+    name: 'A&J Gold', 
+    price: 18000, 
+    duration: 60, 
+    description: 'Corte de cabello degradado, perfilado de cejas, lavado capilar, mascarilla facial e hidratante, masajeador de manos y ocular, bebida a elección.',
+    image: gold
+  },
+  { 
+    id: '5', 
+    name: 'A&J Premium', 
+    price: 27990, 
+    duration: 90, 
+    description: 'Corte de cabello degradado, perfilado de cejas, lavado capilar, limpieza facial completa, masajeador de manos y ocular, bebida a elección, asesoría de corte.',
+    image: premium
   }
 ];
 
