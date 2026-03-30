@@ -30,7 +30,7 @@ const TEAM_DATA: Barber[] = [
     specialty: "Degradados (Fade) & Diseños",
     image: barbero2,
     instagram: "https://instagram.com",
-    whatsapp: "https://wa.me/56912345678"
+    whatsapp: "https://wa.me/56937605937"
   },
   {
     id: "rp2dNmur2GZFBNllPu2dH1u4KYz1",

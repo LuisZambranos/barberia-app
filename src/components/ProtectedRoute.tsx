@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   const { user, role, loading } = useAuth();
-  const location = useLocation(); // 1. Obtenemos la ubicación actual
+  const location = useLocation(); 
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-bg-main text-gold animate-pulse">
@@ -15,13 +15,18 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
     </div>
   );
 
-  // Si no hay usuario, mandarlo al Login, PERO guardando la ubicación en "state"
+  // Si no hay usuario, mandarlo al Login guardando la ubicación
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
-    return <Navigate to="/" replace />;
+  // REGLA DE SEGURIDAD ESTRICTA (Default Deny)
+  // Si la ruta tiene roles permitidos, evaluamos estrictamente
+  if (allowedRoles) {
+    // Si el usuario no tiene rol, o su rol no está en la lista, lo rebotamos
+    if (!role || !allowedRoles.includes(role)) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <Outlet />;
