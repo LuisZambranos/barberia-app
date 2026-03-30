@@ -18,12 +18,16 @@ import barbero1 from "../assets/Simon_barber.webp";
 import barbero2 from "../assets/Alvaro_barber.webp";
 import barbero3 from "../assets/Reynold_barber.webp";
 import barbero4 from "../assets/Javier_barber.webp";
+import barbero5 from "../assets/Alejandro_barber.webp";
+import barbero6 from "../assets/Jose_barbero.webp";
 
 const BARBER_PHOTOS: Record<string, string> = {
-  "A91rn25WwfZq2hPYvEnZ": barbero1,
-  "DmpODFjBiIuxBRaIyEwk": barbero2, 
-  "dDyRG44j2Mt4nJSfZXu9": barbero3,
-  "yQgREMm4PyY7kRqUWvlC": barbero4 
+  "jZQTIPBBwrTNYGTdL7QBIkjBJ913": barbero1,
+  "YsWJfoPcBaRN7hG5KWgCbs6XQc92": barbero2, 
+  "rp2dNmur2GZFBNllPu2dH1u4KYz1": barbero3,
+  "58tCb3NW5uSjrHHnPOmzS3tTxII2": barbero4,
+  "Tzjnvhso43ffT3x0T8rlWVEs3XG3": barbero5,
+  "SfCyyndvi4da8SXT6BgXwUHgZ6A3": barbero6,
 };
 
 const shuffleArray = <T,>(array: T[]): T[] => {

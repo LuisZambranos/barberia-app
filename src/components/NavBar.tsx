@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, role } = useAuth();
+  const { user, role, userName } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -60,7 +60,7 @@ const Navbar = () => {
                   {role === 'client' ? 'Cliente' : role}
                 </span> 
                 <span className="text-txt-main text-xs font-medium group-hover:text-error transition-colors">
-                  {user.email?.split('@')[0]} <span className="text-[9px] opacity-50 ml-1">(Salir)</span>
+                  {userName || user.displayName || user.email?.split('@')[0]} <span className="text-[9px] opacity-50 ml-1">(Salir)</span>
                 </span>
               </button>
             ) : (
@@ -145,7 +145,7 @@ const Navbar = () => {
                 onClick={() => { handleLogout(); setIsOpen(false); }} 
                 className="text-error text-xs uppercase font-bold mt-4 border-t border-white/10 pt-4 w-full text-center"
               >
-                Cerrar Sesión ({user.email?.split('@')[0]})
+                Cerrar Sesión ({userName || user.displayName || user.email?.split('@')[0]})
               </button>
             ) : (
               <Link to="/login" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={() => setIsOpen(false)}>INICIAR SESIÓN</Link>

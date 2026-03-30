@@ -6,47 +6,68 @@ import { Instagram, MessageCircle } from "lucide-react"; // <--- Importamos los 
 import barbero1 from "../assets/Simon_barber.webp"; 
 import barbero2 from "../assets/Alvaro_barber.webp"; 
 import barbero3 from "../assets/Reynold_barber.webp"; 
-import barbero4 from "../assets/Javier_barber.webp"; 
+import barbero4 from "../assets/Javier_barber.webp";
+import barbero5 from "../assets/Alejandro_barber.webp";
+import barbero6 from "../assets/Jose_barbero.webp";
 
 // DATOS ESTÁTICOS Barberos
 const TEAM_DATA: Barber[] = [
   {
-    id: "javi-urban", 
-    name: "Javi",
-    email: "javi@ejemplo.com", 
+    id: "jZQTIPBBwrTNYGTdL7QBIkjBJ913", 
+    name: "Simon ",
+    email: "jozealcala@gmail.com", 
     role: "BARBER & COLOR",
     specialty: "Estilo Urbano & Colorimetría", // Lo dejamos en los datos por si se usa en otro lado, pero no se renderiza
+    image: barbero1,
+    instagram: "https://instagram.com",
+    whatsapp: "https://wa.me/56912345678"
+  },
+  {
+    id: "YsWJfoPcBaRN7hG5KWgCbs6XQc92",
+    name: "Alvaro.",
+    email: "oturameyi2@gmail.com", 
+    role: "SENIOR STYLIST",
+    specialty: "Degradados (Fade) & Diseños",
     image: barbero2,
     instagram: "https://instagram.com",
     whatsapp: "https://wa.me/56912345678"
   },
   {
-    id: "andres-senior",
-    name: "Andrés V.",
-    email: "andres@ejemplo.com", 
-    role: "SENIOR STYLIST",
-    specialty: "Degradados (Fade) & Diseños",
+    id: "rp2dNmur2GZFBNllPu2dH1u4KYz1",
+    name: "Reynold",
+    email: "reynoldamg@gmail.com", 
+    role: "ESPECIALISTA BARBA",
+    specialty: "Perfilado & Toalla Caliente",
     image: barbero3,
     instagram: "https://instagram.com",
     whatsapp: "https://wa.me/56912345678"
   },
   {
-    id: "miguel-barba",
-    name: "Miguel Ángel",
-    email: "miguel@ejemplo.com", 
-    role: "ESPECIALISTA BARBA",
-    specialty: "Perfilado & Toalla Caliente",
+    id: "58tCb3NW5uSjrHHnPOmzS3tTxII2",
+    name: "Javier",
+    email: "kellermatara@gmail.com", 
+    role: "MASTER BARBER",
+    specialty: "Cortes Clásicos & Navaja",
     image: barbero4,
     instagram: "https://instagram.com",
     whatsapp: "https://wa.me/56912345678"
   },
   {
-    id: "carlos-master",
-    name: "Carlos 'El Jefe'",
-    email: "carlos@ejemplo.com", 
-    role: "MASTER BARBER",
-    specialty: "Cortes Clásicos & Navaja",
-    image: barbero1,
+    id: "Tzjnvhso43ffT3x0T8rlWVEs3XG3",
+    name: "Alejandro",
+    email: "alejandrojosevasquezmorales@gmail.com", 
+    role: "ESPECIALISTA BARBA",
+    specialty: "Perfilado & Toalla Caliente",
+    image: barbero5,
+    instagram: "https://instagram.com",
+    whatsapp: "https://wa.me/56912345678"
+  },{
+    id: "SfCyyndvi4da8SXT6BgXwUHgZ6A3",
+    name: "Jose",
+    email: "eresmoralesyosneijose@gmail.com", 
+    role: "ESPECIALISTA BARBA",
+    specialty: "Perfilado & Toalla Caliente",
+    image: barbero6,
     instagram: "https://instagram.com",
     whatsapp: "https://wa.me/56912345678"
   }
