@@ -12,6 +12,7 @@ import { copyToClipboard } from '../utils/clipboard';
 import type { Service } from '../models/Service';
 import type { Barber } from '../models/Barber';
 import type { PaymentMethodType } from '../models/Appointment'; 
+import { sendPendingEmail, sendConfirmationEmail } from '../services/email.service';
 
 // IMÁGENES
 import barbero1 from "../assets/Simon_barber.webp";
@@ -161,34 +162,68 @@ const handleFinalizeBooking = async () => {
 
     setIsSubmitting(true);
     try {
-      // --- CALCULAR EL TOTAL AQUÍ ANTES DE ENVIAR ---
       const finalPrice = selectedService.price + (hasBeardAddon ? 5000 : 0);
 
+      // --- 1. LÓGICA DEL ESTADO (Usando tu esquema exacto de BD) ---
+      let initialStatus: 'pending' | 'confirmed' = 'pending';
+      
+      if (selectedPaymentMethod === 'online') {
+        initialStatus = 'confirmed'; // Pago online siempre asegura el cupo
+      } else if (selectedPaymentMethod === 'cash' && selectedBarber.autoConfirmCash) {
+        initialStatus = 'confirmed';
+      } else if (selectedPaymentMethod === 'transfer' && selectedBarber.autoConfirmTransfer) {
+        initialStatus = 'confirmed';
+      } else if (selectedBarber.autoConfirm) {
+        // Fallback por si activó el general
+        initialStatus = 'confirmed'; 
+      }
+
+      // --- 2. GUARDAR EN FIREBASE ---
       const ticketId = await createAppointment({
         service: selectedService,
         barber: selectedBarber,
         date: selectedDate,
         time: selectedTime,
         paymentMethod: selectedPaymentMethod,
-        
-        // --- NUEVOS DATOS ENVIADOS ---
         selectedItems: selectedItems,
         hasBeardAddon: hasBeardAddon,
         totalPrice: finalPrice,
-
+        status: initialStatus, // <-- Mandamos el estado calculado
         client: clientData,
         clientId: user?.uid
       });
 
+// --- 3. ENVIAR EL CORREO CORRESPONDIENTE ---
+      const emailPayload = {
+        to: clientData.email, 
+        clientName: clientData.name || clientData.email.split('@')[0],
+        barberName: selectedBarber.name.replace("PRUEBA", ""),
+        date: selectedDate, 
+        time: selectedTime,
+        serviceName: selectedService.name,
+        // FIJO: Si por algún error de red no llega el teléfono, ponemos uno de soporte para que la app no colapse,
+        // pero en el 99.9% de los casos tomará el selectedBarber.phone que guardaste en el panel.
+        barberPhone: selectedBarber.phone || '+56937605937', 
+        paymentMethod: selectedPaymentMethod 
+      };
+
+      if (initialStatus === 'confirmed') {
+        await sendConfirmationEmail(emailPayload);
+      } else {
+        await sendPendingEmail(emailPayload);
+      }
+
+      // 4. Avanzar al éxito
       setSuccessId(ticketId);
       setStep(6); 
+
     } catch (error) {
       console.error("Error al guardar la reserva:", error);
       alert("Hubo un error al procesar tu reserva. Intenta nuevamente.");
     } finally {
       setIsSubmitting(false);
     }
-  };
+  };;
 
   if (loading) return (
     <div className="min-h-screen bg-bg-main text-txt-main flex items-center justify-center">
@@ -616,23 +651,83 @@ const handleFinalizeBooking = async () => {
           </div>
         )}
 
-        {step === 6 && (
-             <div className="text-center py-20 animate-in zoom-in-95 duration-700">
-               <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-[0_0_30px_rgba(34,197,94,0.2)]">✓</div>
-               <h2 className="text-3xl font-black mb-4 uppercase tracking-tighter text-txt-main">¡Reserva Solicitada!</h2>
-               
-               {selectedPaymentMethod === 'transfer' && (
-                  <p className="text-gold text-sm font-bold mb-6">Recuerda realizar tu transferencia para asegurar la hora.</p>
-               )}
-               {selectedPaymentMethod === 'online' && (
-                  <p className="text-blue-400 text-sm font-bold mb-6">Serás redirigido a la pasarela de pago en breve (Simulación).</p>
-               )}
+{step === 6 && (() => {
+          // 1. Re-calculamos el estado para saber si está confirmada o pendiente
+          let isConfirmed = false;
+          if (selectedPaymentMethod === 'online') isConfirmed = true;
+          else if (selectedPaymentMethod === 'cash' && selectedBarber?.autoConfirmCash) isConfirmed = true;
+          else if (selectedPaymentMethod === 'transfer' && selectedBarber?.autoConfirmTransfer) isConfirmed = true;
+          else if (selectedBarber?.autoConfirm) isConfirmed = true;
 
-               {successId && (<div className="bg-white/5 border border-white/10 rounded-lg p-6 inline-block mb-8"><p className="text-[10px] text-txt-secondary uppercase tracking-[0.3em] mb-2">Tu Código de Ticket</p><p className="text-4xl font-mono font-bold text-gold">{successId}</p></div>)}
-               <p className="text-txt-secondary max-w-sm mx-auto mb-10">Hemos registrado tu solicitud con éxito. Guarda tu código para seguimiento.</p>
-               <Link to="/" className="bg-gold text-bg-main py-4 px-10 rounded-sm font-bold uppercase tracking-widest hover:bg-gold-hover transition-all">Volver al Inicio</Link>
-             </div>
-        )}
+          // 2. LÓGICA DE WHATSAPP: Mensaje dinámico y enlace
+          const barberPhone = selectedBarber?.phone || '+56937605937'; // Tomamos el teléfono recién configurado
+          let wsMessage = '';
+          const cleanBarberName = selectedBarber?.name?.replace("PRUEBA", "") || "Barbero";
+          const clientFirstName = clientData.name?.split(' ')[0] || "Cliente";
+
+          if (isConfirmed) {
+            wsMessage = `Hola ${cleanBarberName}, soy ${clientFirstName}. ¡Ya tengo mi hora confirmada para el ${selectedDate} a las ${selectedTime}! Nos vemos pronto.`;
+          } else if (selectedPaymentMethod === 'transfer') {
+            wsMessage = `Hola ${cleanBarberName}, soy ${clientFirstName}. Acabo de solicitar una reserva para el ${selectedDate} a las ${selectedTime} pagando por transferencia. Adjunto mi comprobante para asegurar la hora:`;
+          } else if (selectedPaymentMethod === 'cash') {
+            wsMessage = `Hola ${cleanBarberName}, soy ${clientFirstName}. Acabo de solicitar una reserva para el ${selectedDate} a las ${selectedTime} con pago en efectivo. Escribo para confirmar mi hora.`;
+          }
+
+          // Codificamos el mensaje para que funcione en la URL
+          const wsLink = barberPhone ? `https://wa.me/${barberPhone}?text=${encodeURIComponent(wsMessage)}` : '#';
+
+          return (
+            <div className="text-center py-20 animate-in zoom-in-95 duration-700">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-lg 
+                ${isConfirmed ? 'bg-green-500/20 text-green-500 shadow-[0_0_30px_rgba(34,197,94,0.2)]' : 'bg-yellow-500/20 text-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.2)]'}`}>
+                {isConfirmed ? '✓' : '⏳'}
+              </div>
+              
+              <h2 className="text-3xl font-black mb-4 uppercase tracking-tighter text-txt-main">
+                {isConfirmed ? '¡Cita Confirmada!' : '¡Reserva Solicitada!'}
+              </h2>
+              
+              {!isConfirmed && selectedPaymentMethod === 'transfer' && (
+                  <p className="text-gold text-sm font-bold mb-6">Recuerda realizar tu transferencia y enviarle el comprobante al barbero para asegurar tu hora.</p>
+              )}
+              {selectedPaymentMethod === 'online' && (
+                  <p className="text-blue-400 text-sm font-bold mb-6">Serás redirigido a la pasarela de pago en breve (Simulación).</p>
+              )}
+
+              {successId && (
+                <div className="bg-white/5 border border-white/10 rounded-lg p-6 inline-block mb-8">
+                  <p className="text-[10px] text-txt-secondary uppercase tracking-[0.3em] mb-2">Tu Código de Ticket</p>
+                  <p className="text-4xl font-mono font-bold text-gold">{successId}</p>
+                </div>
+              )}
+              
+              <p className="text-txt-secondary max-w-sm mx-auto mb-10">
+                {isConfirmed 
+                  ? 'Tu hora está asegurada al 100%. Te hemos enviado un correo con todos los detalles.' 
+                  : 'Tu cita está pendiente de aprobación por el barbero. Revisa tu correo con los pasos a seguir.'}
+              </p>
+              
+              <div className="flex flex-col gap-4 max-w-sm mx-auto">
+                {/* NUEVO: Botón Gigante de WhatsApp (Solo se muestra si el barbero configuró su teléfono) */}
+                {barberPhone && (
+                  <a 
+                    href={wsLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-full bg-[#25D366] text-black py-4 px-10 rounded-sm font-black uppercase tracking-widest hover:bg-[#1ebe5d] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/20"
+                  >
+                    <span>Contactar por WhatsApp</span>
+                  </a>
+                )}
+
+                <Link to="/" className="w-full border border-white/20 text-white py-4 px-10 rounded-sm font-bold uppercase tracking-widest hover:bg-white/5 transition-all block">
+                  Volver al Inicio
+                </Link>
+              </div>
+
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

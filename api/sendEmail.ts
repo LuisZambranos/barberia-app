@@ -1,72 +1,169 @@
-import nodemailer from "nodemailer";
+import nodemailer from 'nodemailer';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default async function handler(req: any, res: any) {
-  // Headers CORS para que tu frontend pueda llamarlo
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  // Responder rápido al preflight request del navegador
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Solo POST permitido" });
-  }
+  const { to, type, appointmentData } = req.body;
 
-  // Extraemos el 'type' para saber qué correo enviar
-  const { to, clientName, type } = req.body;
+  if (!to || !type || !appointmentData) {
+    return res.status(400).json({ message: 'Faltan datos requeridos' });
+  }
 
   try {
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // Contraseña de aplicación si usas Gmail
-      },
+      service: 'gmail',
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
     });
 
-    let subject = "";
-    let htmlContent = "";
+    let subject = '';
+    let htmlContent = '';
 
-    // LÓGICA DEL CRM: Evaluamos qué tipo de correo es
-    if (type === 'reminder') {
-        subject = "¡Ya toca un retoque! ✂️";
-        htmlContent = `
-          <div style="font-family: sans-serif; text-align: center; max-width: 500px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px; background-color: #fafafa;">
-            <h2 style="color: #111;">¡Hola ${clientName}!</h2>
-            <p style="color: #666; line-height: 1.6;">Ya han pasado 15 días desde tu último corte. ¿Qué tal si agendamos un retoque para mantener ese estilo impecable?</p>
-            <a href="https://TU_LINK_DE_RESERVA.com" style="background-color: #D4AF37; color: #111; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">Agendar mi Cita</a>
-          </div>
-        `;
-    } else {
-        subject = "¡Gracias por tu visita! ¿Qué tal quedó el corte?";
-        htmlContent = `
-          <div style="font-family: sans-serif; text-align: center; max-width: 500px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px; background-color: #fafafa;">
-            <h2 style="color: #111;">¡Hola ${clientName}!</h2>
-            <p style="color: #666; line-height: 1.6;">Esperamos que hayas quedado feliz con tu corte y la experiencia de hoy en nuestra barbería.</p>
-            <p style="color: #666; line-height: 1.6;">Nos ayudaría muchísimo si nos regalas 5 estrellas en Google Maps. ¡Toma solo 10 segundos y nos ayuda a crecer enormemente!</p>
-            <a href="https://g.page/r/TU_LINK_DE_RESEÑA" style="background-color: #D4AF37; color: #111; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">Dejar mi reseña ⭐️⭐️⭐️⭐️⭐️</a>
-          </div>
-        `;
+    const baseStyles = `
+      body { font-family: Arial, sans-serif; background-color: #121212; color: #ffffff; margin: 0; padding: 20px; }
+      .container { max-width: 600px; margin: 0 auto; background-color: #1e1e1e; border: 1px solid #333; border-radius: 8px; overflow: hidden; }
+      .header { background-color: #000000; padding: 20px; text-align: center; border-bottom: 2px solid #D4AF37; }
+      .content { padding: 30px; line-height: 1.6; }
+      .gold-text { color: #D4AF37; font-weight: bold; }
+      .box { background-color: #2a2a2a; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #D4AF37; }
+      .policy-box { background-color: #2a1f1f; border-left: 4px solid #e74c3c; padding: 15px; border-radius: 5px; margin: 20px 0; font-size: 0.9em; }
+      .btn { display: inline-block; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 20px; text-align: center; }
+      .btn-ws { background-color: #25D366; color: #000000; }
+      .btn-gold { background-color: #D4AF37; color: #000000; }
+      .footer { text-align: center; padding: 20px; font-size: 0.8em; color: #888; }
+    `;
+
+    const appointmentDetailsHTML = `
+      <div class="box">
+        <p><strong>Barbero:</strong> ${appointmentData.barberName}</p>
+        <p><strong>Servicio:</strong> ${appointmentData.serviceName}</p>
+        <p><strong>Fecha:</strong> ${appointmentData.date}</p>
+        <p><strong>Hora:</strong> ${appointmentData.time}</p>
+      </div>
+    `;
+
+    const policyHTML = `
+      <div class="policy-box">
+        <strong style="color: #e74c3c;">⚠️ Políticas de AJ Studio:</strong><br>
+        • Tolerancia máxima de retraso: <strong>10 minutos</strong>.<br>
+        • Tarifa de cancelación aplica si cancelas con menos de <strong>3 horas</strong> de anticipación.<br>
+        <em>Recomendamos pago por transferencia para asegurar cupos.</em>
+      </div>
+    `;
+
+    // --- LÓGICA FIJA DE WHATSAPP ---
+    const phone = appointmentData.barberPhone; // Ya es obligatorio
+    let wsMessage = '';
+    
+    if (type === 'confirmed') {
+      wsMessage = `Hola ${appointmentData.barberName}, soy ${appointmentData.clientName}. ¡Ya tengo mi hora confirmada para el ${appointmentData.date} a las ${appointmentData.time}! Nos vemos.`;
+    } else if (type === 'pending') {
+       if (appointmentData.paymentMethod === 'transfer') {
+           wsMessage = `Hola ${appointmentData.barberName}, soy ${appointmentData.clientName}. Solicité una reserva para el ${appointmentData.date} a las ${appointmentData.time}. Te adjunto el comprobante de transferencia:`;
+       } else {
+           wsMessage = `Hola ${appointmentData.barberName}, soy ${appointmentData.clientName}. Solicité una reserva para el ${appointmentData.date} a las ${appointmentData.time} (pago en efectivo). Confírmame por favor.`;
+       }
+    } else if (type === 'canceled') {
+      wsMessage = `Hola ${appointmentData.barberName}, vi que mi cita del ${appointmentData.date} fue cancelada. ¿Podemos reagendar?`;
     }
 
-    // Enviamos el correo con el asunto y diseño correspondiente
-    await transporter.sendMail({
-      from: `"Barber Shop" <${process.env.EMAIL_USER}>`,
-      to: to,
-      subject: subject,
-      html: htmlContent
-    });
+    const wsLink = `https://wa.me/${phone}?text=${encodeURIComponent(wsMessage)}`;
+    const wsButtonHTML = `<div style="text-align: center;"><a href="${wsLink}" class="btn btn-ws">Contactar por WhatsApp</a></div>`;
 
-    return res.status(200).json({ success: true, message: "Email enviado exitosamente" });
+    // --- ENRUTADOR ---
+    switch (type) {
+      case 'pending':
+        subject = '⚠️ Tu cita está PENDIENTE - AJ Studio';
+        htmlContent = `
+          <html><head><style>${baseStyles}</style></head><body>
+            <div class="container">
+              <div class="header"><h1 style="margin: 0; letter-spacing: 2px;">AJ <span class="gold-text">STUDIO</span></h1></div>
+              <div class="content">
+                <h2>Hola ${appointmentData.clientName},</h2>
+                <p>Tu solicitud de reserva está <strong style="color: #f39c12;">PENDIENTE</strong> de aprobación.</p>
+                ${appointmentDetailsHTML}
+                <p>Para agilizar la confirmación, comunícate con tu barbero vía WhatsApp:</p>
+                ${wsButtonHTML}
+                ${policyHTML}
+              </div>
+              <div class="footer">AJ Studio - Barbería & Estilo</div>
+            </div>
+          </body></html>
+        `;
+        break;
+
+      case 'confirmed':
+        subject = '✅ Cita Confirmada - AJ Studio';
+        htmlContent = `
+          <html><head><style>${baseStyles}</style></head><body>
+            <div class="container">
+              <div class="header"><h1 style="margin: 0; letter-spacing: 2px;">AJ <span class="gold-text">STUDIO</span></h1></div>
+              <div class="content">
+                <h2>¡Excelente ${appointmentData.clientName}!</h2>
+                <p>Tu cita ha sido <strong style="color: #2ecc71;">CONFIRMADA</strong>. Tu cupo está asegurado.</p>
+                ${appointmentDetailsHTML}
+                ${wsButtonHTML}
+                ${policyHTML}
+              </div>
+              <div class="footer">AJ Studio - Barbería & Estilo</div>
+            </div>
+          </body></html>
+        `;
+        break;
+
+      case 'canceled':
+        subject = '❌ Cita Cancelada - AJ Studio';
+        htmlContent = `
+          <html><head><style>${baseStyles}</style></head><body>
+            <div class="container">
+              <div class="header"><h1 style="margin: 0; letter-spacing: 2px;">AJ <span class="gold-text">STUDIO</span></h1></div>
+              <div class="content">
+                <h2>Hola ${appointmentData.clientName},</h2>
+                <p>Tu cita para el <strong>${appointmentData.date} a las ${appointmentData.time}</strong> ha sido cancelada.</p>
+                <p>Si deseas reagendar, escríbele a tu barbero o agenda nuevamente en la web.</p>
+                ${wsButtonHTML}
+                <div style="text-align: center; margin-top: 15px;">
+                  <a href="https://ajstudio.vercel.app/book" class="btn btn-gold">Agendar Nueva Cita</a>
+                </div>
+              </div>
+              <div class="footer">AJ Studio - Barbería & Estilo</div>
+            </div>
+          </body></html>
+        `;
+        break;
+
+      case 'completed': 
+        subject = '💈 ¡Gracias por tu visita a AJ Studio!';
+        htmlContent = `
+          <html><head><style>${baseStyles}</style></head><body>
+            <div class="container">
+              <div class="header"><h1 style="margin: 0; letter-spacing: 2px;">AJ <span class="gold-text">STUDIO</span></h1></div>
+              <div class="content">
+                <h2>Hola ${appointmentData.clientName},</h2>
+                <p>Esperamos que hayas disfrutado tu servicio de <strong>${appointmentData.serviceName}</strong> con ${appointmentData.barberName}.</p>
+                <p>Para nosotros es muy importante seguir mejorando. ¿Qué tal te pareció la experiencia?</p>
+                <div style="text-align: center;">
+                  <a href="https://g.page/r/tu-enlace-de-google/review" class="btn btn-gold">Calificar Servicio ⭐⭐⭐⭐⭐</a>
+                </div>
+              </div>
+              <div class="footer">AJ Studio - Barbería & Estilo</div>
+            </div>
+          </body></html>
+        `;
+        break;
+
+      default:
+        return res.status(400).json({ message: 'Tipo de correo inválido' });
+    }
+
+    const mailOptions = { from: `"AJ Studio" <${process.env.EMAIL_USER}>`, to, subject, html: htmlContent };
+    await transporter.sendMail(mailOptions);
+    return res.status(200).json({ message: 'Correo enviado', type });
 
   } catch (error) {
-    console.error('Error enviando email:', error);
-    return res.status(500).json({ success: false, error: "Error enviando email" });
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    return res.status(500).json({ message: 'Error enviando correo', error: errorMessage });
   }
 }

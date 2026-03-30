@@ -1,9 +1,11 @@
-import { collection, doc, runTransaction } from "firebase/firestore";
+import { collection, doc, runTransaction, getDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import type { Service } from "../models/Service";
 import type { Barber } from "../models/Barber";
 import type { PaymentMethodType } from "../models/Appointment";
-import { sendReviewEmail } from "./email.service";
+// NUEVO: Importamos todos los correos
+import { sendReviewEmail, sendConfirmationEmail, sendCancellationEmail } from "./email.service";
+
 interface BookingData {
   service: Service;
   barber: Barber;
@@ -13,9 +15,8 @@ interface BookingData {
   selectedItems: string[]; 
   hasBeardAddon: boolean;
   totalPrice: number;
-  
-  clientId?: string; // <--- NUEVO: Para saber qué usuario del CRM es
-
+  status: 'pending' | 'confirmed'; // <-- IMPORTANTE: Ahora exigimos el status desde el frontend
+  clientId?: string; 
   client: {
     name: string;
     phone: string;
@@ -26,28 +27,11 @@ interface BookingData {
 export const createAppointment = async (data: BookingData): Promise<string> => {
   const dateKey = data.date; 
   const counterRef = doc(db, "dailyCounters", dateKey);
-  const barberRef = doc(db, "barbers", data.barber.id);
 
   try {
     const resultId = await runTransaction(db, async (transaction) => {
       const counterDoc = await transaction.get(counterRef);
-      const barberDoc = await transaction.get(barberRef);
       
-      const barberData = barberDoc.exists() ? barberDoc.data() : null;
-      let initialStatus: 'pending' | 'confirmed' = 'pending';
-
-      if (barberData) {
-        if (barberData.autoConfirm) {
-            initialStatus = 'confirmed';
-        } else {
-            if (data.paymentMethod === 'cash' && barberData.autoConfirmCash) {
-                initialStatus = 'confirmed';
-            } else if (data.paymentMethod === 'transfer' && barberData.autoConfirmTransfer) {
-                initialStatus = 'confirmed';
-            }
-        }
-      }
-
       let newCount = 1;
       if (counterDoc.exists()) {
         newCount = counterDoc.data().count + 1;
@@ -72,11 +56,12 @@ export const createAppointment = async (data: BookingData): Promise<string> => {
         selectedItems: data.selectedItems,
         hasBeardAddon: data.hasBeardAddon,
 
-        clientId: data.clientId || null, // <--- GUARDAMOS EL ID DEL CLIENTE
+        clientId: data.clientId || null, 
         clientName: data.client.name,
         clientPhone: data.client.phone,
         clientEmail: data.client.email,
-        status: initialStatus,
+        
+        status: data.status, // <-- USAMOS EL STATUS QUE VIENE DEL FRONTEND
         paymentMethod: data.paymentMethod, 
         createdAt: new Date().toISOString(),
       };
@@ -95,12 +80,13 @@ export const createAppointment = async (data: BookingData): Promise<string> => {
 
 export const updateAppointmentStatus = async (
   appointmentId: string, 
-  newStatus: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+  newStatus: 'pending' | 'confirmed' | 'cancelled' | 'completed' // Nota: En el backend usamos 'canceled', ten ojo si aquí usas 'cancelled' con doble L.
 ): Promise<void> => {
   try {
     const appointmentRef = doc(db, "appointments", appointmentId);
     
     // 1. Necesitamos leer los datos primero para saber a quién enviarle el correo
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let apptData: any = null;
 
     await runTransaction(db, async (transaction) => {
@@ -120,11 +106,36 @@ export const updateAppointmentStatus = async (
       }
     });
 
-    // --- ENVIAMOS EL CORREO FUERA DE LA TRANSACCIÓN ---
-    // (Es mejor hacer llamadas a APIs externas fuera de las transacciones de base de datos)
-    if (newStatus === 'completed' && apptData && apptData.clientEmail) {
-        const firstName = apptData.clientName.split(' ')[0]; // Sacamos solo el primer nombre
-        await sendReviewEmail(apptData.clientEmail, firstName);
+// --- 2. ENVIAMOS EL CORREO FUERA DE LA TRANSACCIÓN (Trigger B) ---
+    if (apptData && apptData.clientEmail) {
+      
+      // FIJO: Buscamos el teléfono del barbero en la BD
+      const barberDocRef = doc(db, "barbers", apptData.barberId);
+      const barberDoc = await getDoc(barberDocRef); 
+      
+      // Si el barbero no lo ha configurado, enviamos el de soporte para que no falle
+      const barberPhone = barberDoc.exists() && barberDoc.data().phone ? barberDoc.data().phone : '+56900000000';
+
+      // Armamos el payload con el teléfono y el método de pago fijos
+      const emailPayload = {
+        to: apptData.clientEmail,
+        clientName: apptData.clientName,
+        barberName: apptData.barberName,
+        date: apptData.date,
+        time: apptData.time,
+        serviceName: apptData.serviceName,
+        barberPhone: barberPhone,
+        paymentMethod: apptData.paymentMethod || 'cash' // Por si acaso
+      };
+
+      // Disparamos el correo correcto según el nuevo estado manual
+      if (newStatus === 'confirmed') {
+        await sendConfirmationEmail(emailPayload);
+      } else if (newStatus === 'cancelled' || newStatus === 'canceled' as string) {
+        await sendCancellationEmail(emailPayload);
+      } else if (newStatus === 'completed') {
+        await sendReviewEmail(emailPayload); 
+      }
     }
 
   } catch (error) {
