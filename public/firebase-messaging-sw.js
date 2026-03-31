@@ -25,7 +25,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.data.title || '¡Nueva Reserva!';
   const notificationOptions = {
     body: payload.data.body || 'Tienes una nueva cita agendada.',
-    icon: '/logo-1.png', // <-- Ahora sí tiene el punto
+    icon: '/Logo-1.png', // <-- Ahora sí tiene el punto
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
