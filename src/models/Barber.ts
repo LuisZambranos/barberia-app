@@ -34,6 +34,7 @@ export interface Barber {
   autoConfirmTransfer?: boolean; // 3. Automático para Transferencias
   paymentMethods?: PaymentMethods;
   transferDetails?: TransferDetails; // Datos bancarios opcionales
+  fcmToken?: string;             // Token FCM para notificaciones
   
   schedule?: {
     start: string;

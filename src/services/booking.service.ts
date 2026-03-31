@@ -1,4 +1,4 @@
-import { collection, doc, runTransaction, getDoc } from "firebase/firestore";
+import { collection, doc, runTransaction, getDoc,deleteDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import type { Service } from "../models/Service";
 import type { Barber } from "../models/Barber";
@@ -141,5 +141,56 @@ export const updateAppointmentStatus = async (
   } catch (error) {
     console.error("Error al actualizar el estado de la cita:", error);
     throw error;
+  }
+};
+
+// --- SISTEMA ANTI-COLISIONES (CANDADOS TEMPORALES) ---
+
+export const createTemporalLock = async (barberId: string, date: string, time: string): Promise<boolean> => {
+  // Creamos un ID único para esa hora exacta con ese barbero
+  const lockId = `${barberId}_${date}_${time}`;
+  const lockRef = doc(db, "locks", lockId);
+
+  try {
+    // Usamos una transacción para que sea a prueba de balas si 2 personas hacen clic al mismo milisegundo
+    const acquired = await runTransaction(db, async (transaction) => {
+      const lockDoc = await transaction.get(lockRef);
+      const now = new Date().getTime();
+
+      if (lockDoc.exists()) {
+        const lockData = lockDoc.data();
+        // Si el candado existe y su tiempo de expiración es mayor a AHORA, alguien más lo tiene
+        if (lockData.expiresAt > now) {
+          return false; // Falló, no pudimos tomar la hora
+        }
+      }
+
+      // Si no existe o ya expiró, lo tomamos nosotros por 5 minutos (300,000 milisegundos)
+      const expiresAt = now + (5 * 60 * 1000);
+      transaction.set(lockRef, {
+        barberId,
+        date,
+        time,
+        expiresAt
+      });
+
+      return true; // ¡Candado adquirido!
+    });
+
+    return acquired;
+  } catch (error) {
+    console.error("Error al crear candado temporal:", error);
+    return false;
+  }
+};
+
+export const releaseTemporalLock = async (barberId: string, date: string, time: string): Promise<void> => {
+  const lockId = `${barberId}_${date}_${time}`;
+  const lockRef = doc(db, "locks", lockId);
+  try {
+    // Si el usuario se arrepiente, borramos el candado para liberar la hora
+    await deleteDoc(lockRef);
+  } catch (error) {
+    console.error("Error al liberar candado:", error);
   }
 };

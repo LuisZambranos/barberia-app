@@ -33,12 +33,13 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
     setTimeout(() => {
       setActiveToast({ message, type });
       
-      if (type === 'success' && audioRef.current) {
+      // Ahora sonará tanto para success como para error
+      if ((type === 'success' || type === 'error') && audioRef.current) {
          audioRef.current.pause();      
          audioRef.current.currentTime = 0; 
          audioRef.current.play().then(() => {
          }).catch((err) => {
-             console.error("🎵 [Toast] Error reproduciendo sonido (El navegador puede estar bloqueando Autoplay):", err);
+             console.error("🎵 [Toast] Error reproduciendo sonido:", err);
          });
       }
       

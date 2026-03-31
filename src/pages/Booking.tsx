@@ -4,15 +4,17 @@ import { db } from '../firebase/config';
 import { Link } from 'react-router-dom';
 import { Copy, CheckCircle2, PlusCircle, Scissors } from 'lucide-react'; 
 import { useAuth } from '../context/AuthContext';
+import  {useToast} from "../context/ToastContext"; 
 
 import { useBarberSchedule } from "../hooks/useBarberSchedule";
-import { createAppointment } from '../services/booking.service';
+import { createAppointment, createTemporalLock, releaseTemporalLock } from '../services/booking.service';
 import { copyToClipboard } from '../utils/clipboard'; 
 
 import type { Service } from '../models/Service';
 import type { Barber } from '../models/Barber';
 import type { PaymentMethodType } from '../models/Appointment'; 
 import { sendPendingEmail, sendConfirmationEmail } from '../services/email.service';
+import { sendPushAlert } from '../services/notification.service';
 
 // IMÁGENES
 import barbero1 from "../assets/Simon_barber.webp";
@@ -41,6 +43,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 const Booking = () => {
+  const { toast } = useToast()
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,6 +68,7 @@ const Booking = () => {
   const [clientData, setClientData] = useState({ name: '', phone: '', email: '' });
   // --- NUEVO: AUTOCOMPLETADO DEL CRM ---
   const { user } = useAuth(); // Obtenemos el usuario activo
+  const [isLocking, setIsLocking] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -133,6 +137,21 @@ const Booking = () => {
   const currentTotal = (selectedService?.price || 0) + (hasBeardAddon ? 5000 : 0);
   // --------------------------------------
 
+  // --- NUEVA LÓGICA: FILTRAR HORAS PASADAS ---
+  const isToday = selectedDate === new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
+  const validTimes = availableTimes.filter(time => {
+    if (!isToday) return true; // Si es para mañana o después, todas valen
+    
+    const [hours, minutes] = time.split(':').map(Number);
+    // Solo mostramos horas en el futuro
+    return hours > currentHour || (hours === currentHour && minutes > currentMinute);
+  });
+  // -------------------------------------------
+
   const handleCopyAllBankDetails = () => {
     if (!bankDetails) return;
     
@@ -154,6 +173,47 @@ Correo: ${bankDetails.email || ''}`.trim();
     if (success) {
         setCopiedDetail('all');
         setTimeout(() => setCopiedDetail(null), 2000);
+    }
+  };
+
+  // --- CONTROL CENTRAL DE NAVEGACIÓN Y SCROLL ---
+  const handleStepChange = (targetStep: number) => {
+    // Si retrocedemos a un paso donde la hora no importa (1, 2 o 3) 
+    // y estábamos en un paso avanzado (4 o 5), LIBERAMOS el candado.
+    if (targetStep <= 3 && step >= 4) {
+      if (selectedBarber && selectedDate && selectedTime) {
+        releaseTemporalLock(selectedBarber.id, selectedDate, selectedTime);
+      }
+    }
+    setStep(targetStep);
+  };
+
+  // Efecto que mueve la barra superior automáticamente
+  useEffect(() => {
+    const activeStepElement = document.getElementById(`step-item-${step}`);
+    if (activeStepElement) {
+      activeStepElement.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center', // Lo centra perfectamente en mobile
+        block: 'nearest'
+      });
+    }
+  }, [step]);
+
+  // --- FUNCIONES ANTI-COLISIONES ---
+  const handleProceedToStep4 = async () => {
+    if (!selectedBarber || !selectedDate || !selectedTime) return;
+    
+    setIsLocking(true);
+    const success = await createTemporalLock(selectedBarber.id, selectedDate, selectedTime);
+    setIsLocking(false);
+
+    if (success) {
+      setStep(4); 
+    } else {
+      // Como ya actualizamos el Provider, esto mostrará la alerta roja Y hará el sonido automáticamente
+      toast.error("¡Ups! Alguien acaba de reservar esta hora. Elige otra.");
+      setSelectedTime(null); 
     }
   };
 
@@ -213,6 +273,19 @@ const handleFinalizeBooking = async () => {
         await sendPendingEmail(emailPayload);
       }
 
+      // --- NUEVO: DISPARAR NOTIFICACIÓN PUSH AL BARBERO ---
+      // Verificamos si el barbero activó las notificaciones y tiene su Token guardado
+      if (selectedBarber.fcmToken && selectedBarber.notifications?.newBooking) {
+        const clientFirstName = clientData.name?.split(' ')[0] || "Un cliente";
+        const pushTitle = initialStatus === 'confirmed' ? '✅ Nueva Reserva Confirmada' : '⏳ Nueva Solicitud de Reserva';
+        const pushBody = `${clientFirstName} agendó para el ${selectedDate} a las ${selectedTime}.`;
+        
+        // Lo disparamos sin usar 'await' para que el cliente no tenga que esperar a que se envíe la notificación
+        sendPushAlert(selectedBarber.fcmToken, pushTitle, pushBody)
+          .catch(err => console.error("Error al enviar Push al barbero:", err));
+      }
+      // --------------------------------------------------
+
       // 4. Avanzar al éxito
       setSuccessId(ticketId);
       setStep(6); 
@@ -253,18 +326,20 @@ const handleFinalizeBooking = async () => {
               { id: 5, label: "05 Pago" },        
               { id: 6, label: "06 Confirmación" } 
             ].map((s) => {
-              const isAvailable = 
+              const isAvailable = successId ? (s.id === 6) : (
                 (s.id === 1) ||
                 (s.id === 2 && selectedService) ||
                 (s.id === 3 && selectedService && selectedBarber) ||
                 (s.id === 4 && selectedService && selectedBarber && selectedDate && selectedTime) ||
                 (s.id === 5 && selectedService && selectedBarber && selectedDate && selectedTime && clientData.name) ||
-                (s.id === 6 && step === 6);
+                (s.id === 6 && step === 6)
+              );
 
               return (
                 <div 
                   key={s.id}
-                  onClick={() => isAvailable && setStep(s.id)}
+                  id={`step-item-${s.id}`} // <-- NUEVO: Necesario para que el auto-scroll lo encuentre
+                  onClick={() => isAvailable && handleStepChange(s.id)} // <-- NUEVO: Libera el candado si retrocede
                   className={`flex items-center gap-3 shrink-0 transition-all duration-300 
                     ${isAvailable ? "cursor-pointer opacity-100" : "cursor-not-allowed opacity-30"}`}
                 >
@@ -453,14 +528,14 @@ const handleFinalizeBooking = async () => {
                 </div>
               </div>
               
-              <div className="lg:col-span-3 space-y-4">
+             <div className="lg:col-span-3 space-y-4">
                 <h3 className="text-sm font-bold text-gold uppercase tracking-[0.2em]">2. Horarios Disponibles</h3>
                 
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                   {loadingSchedule ? (
                       <p className="col-span-3 text-gold animate-pulse text-sm">Cargando disponibilidad...</p>
-                  ) : availableTimes.length > 0 ? (
-                      availableTimes.map(time => {
+                  ) : validTimes.length > 0 ? (
+                      validTimes.map(time => {
                         const isSelected = selectedTime === time;
                         return (
                           <button
@@ -477,9 +552,45 @@ const handleFinalizeBooking = async () => {
                         );
                       })
                   ) : (
-                      <p className="col-span-3 text-red-400 text-xs border border-red-500/20 bg-red-500/10 p-2 rounded">
-                          Este barbero no atiende hoy o no tiene horario configurado.
-                      </p>
+                      <div className="col-span-3 sm:col-span-4 animate-in fade-in duration-500">
+                          {/* ALERTA ROJA */}
+                          <p className="text-red-400 text-xs border border-red-500/20 bg-red-500/10 p-3 rounded mb-6">
+                              Las horas de este profesional ya pasaron o su agenda está llena para hoy.
+                          </p>
+                          
+                          {/* LISTA DE OTROS BARBEROS RÁPIDA */}
+                          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                            <h4 className="text-[10px] text-txt-muted uppercase tracking-widest font-bold mb-4">
+                              Prueba la disponibilidad de otro profesional:
+                            </h4>
+                            
+                            <div className="flex flex-col gap-3">
+                              {barbers
+                                .filter(b => b.id !== selectedBarber?.id) 
+                                .map(otherBarber => (
+                                  <button
+                                    key={otherBarber.id}
+                                    onClick={() => setSelectedBarber(otherBarber)} 
+                                    className="flex items-center gap-4 p-2 rounded hover:bg-white/10 transition-colors text-left"
+                                  >
+                                      <img 
+                                        src={BARBER_PHOTOS[otherBarber.id] || "https://via.placeholder.com/150"} 
+                                        alt={otherBarber.name}
+                                        className="w-10 h-10 rounded-full object-cover border border-white/20"
+                                      />
+                                      <div>
+                                        <p className="text-sm font-bold text-white leading-tight">
+                                          {otherBarber.name.replace("PRUEBA", "")}
+                                        </p>
+                                        <p className="text-[10px] text-gold uppercase tracking-widest">
+                                          Ver su agenda
+                                        </p>
+                                      </div>
+                                  </button>
+                              ))}
+                            </div>
+                          </div>
+                      </div>
                   )}
                 </div>
               </div>
@@ -487,11 +598,11 @@ const handleFinalizeBooking = async () => {
 
             <div className="flex flex-col sm:flex-row gap-4 border-t border-white/10 mt-6 pt-6">
               <button 
-                disabled={!selectedTime}
-                className="sm:w-3/4 bg-gold text-bg-main p-4 rounded-sm font-black text-sm uppercase tracking-[0.2em] disabled:opacity-30 shadow-xl shadow-gold/20 hover:bg-gold-hover transition-all"
-                onClick={() => setStep(4)}
+                disabled={!selectedTime || isLocking}
+                className="sm:w-3/4 bg-gold text-bg-main p-4 rounded-sm font-black text-sm uppercase tracking-[0.2em] disabled:opacity-30 shadow-xl shadow-gold/20 hover:bg-gold-hover transition-all flex justify-center items-center"
+                onClick={handleProceedToStep4} // <-- Usamos la nueva función
               >
-                Ingresar Datos
+                {isLocking ? "Asegurando hora..." : "Ingresar Datos"}
               </button>
               <button onClick={() => setStep(2)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all">
                 Regresar
@@ -520,7 +631,7 @@ const handleFinalizeBooking = async () => {
               <div><label className="block text-[10px] font-bold text-gold uppercase tracking-[0.2em] mb-2">Email</label><input required type="email" value={clientData.email} onChange={(e) => setClientData({...clientData, email: e.target.value})} className="w-full bg-white/5 border border-white/10 p-4 rounded-sm focus:border-gold outline-none transition-all" placeholder="correo@ejemplo.com" /></div>
               <div className="flex flex-col sm:flex-row gap-4 border-t border-white/10 mt-6 pt-6">
                 <button type="submit" className="w-full bg-gold text-bg-main p-4 rounded-sm font-black text-sm uppercase tracking-[0.2em] hover:bg-gold-hover transition-all shadow-xl shadow-gold/20">Continuar al Pago</button>
-                <button type="button" onClick={() => setStep(3)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all">Regresar</button>
+                <button type="button" onClick={() => handleStepChange(3)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all">Regresar</button>
               </div>
             </form>
           </div>

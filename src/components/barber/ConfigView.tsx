@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Save, Bell, DollarSign, Clock, Zap, Loader2, Landmark, MessageCircle } from "lucide-react"; // <-- NUEVO: Icono MessageCircle
+import { Save, Bell, DollarSign, Clock, Zap, Loader2, Landmark, MessageCircle, Smartphone } from "lucide-react"; // <-- NUEVO: Icono MessageCircle
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { useToast } from "../../context/ToastContext";
+import { requestNotificationPermission } from "../../services/notification.service";
 
 interface ConfigViewProps {
   barberId: string;
@@ -33,6 +34,21 @@ const ConfigView = ({ barberId }: ConfigViewProps) => {
     mon: true, tue: true, wed: true, thu: true, fri: true, sat: true, sun: false
   });
   const [notifications, setNotifications] = useState({ newBooking: true, cancellation: true });
+// --- NUEVO: ESTADO PARA EL BOTÓN PUSH ---
+  const [requestingPush, setRequestingPush] = useState(false);
+
+  // --- NUEVO: FUNCIÓN PARA PEDIR PERMISO ---
+  const handleEnablePushNotifications = async () => {
+    setRequestingPush(true);
+    const success = await requestNotificationPermission(barberId);
+    
+    if (success) {
+      toast.success("¡Notificaciones Push activadas en este dispositivo!");
+    } else {
+      toast.error("No se pudo activar. Asegúrate de dar permisos en tu navegador.");
+    }
+    setRequestingPush(false);
+  };
 
   const [paymentMethods, setPaymentMethods] = useState({ 
     cash: true, 
@@ -306,16 +322,53 @@ const ConfigView = ({ barberId }: ConfigViewProps) => {
       <section className="bg-bg-card border border-white/5 rounded-xl p-6 shadow-lg">
           <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Bell size={20} /></div>
-              <h2 className="text-lg font-bold text-white">Notificaciones</h2>
-          </div>
-          <div className="space-y-4">
-               <div className="flex items-center justify-between">
-                  <span className="text-sm text-txt-muted">Alerta de Nueva Reserva</span>
-                  <Toggle active={notifications.newBooking} onClick={() => setNotifications({...notifications, newBooking: !notifications.newBooking})} />
+              <div>
+                <h2 className="text-lg font-bold text-white">Notificaciones</h2>
+                <p className="text-xs text-txt-muted">Controla cómo te avisa el sistema.</p>
               </div>
-              <div className="flex items-center justify-between">
-                  <span className="text-sm text-txt-muted">Alerta de Cancelación</span>
-                  <Toggle active={notifications.cancellation} onClick={() => setNotifications({...notifications, cancellation: !notifications.cancellation})} />
+          </div>
+          
+          <div className="space-y-6">
+              {/* Botón para activar Push (El corazón de la Fase 3) */}
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                      <Smartphone className="text-blue-400 shrink-0 mt-1" size={18} />
+                      <div>
+                          <p className="text-sm font-bold text-white leading-tight">Alertas en este Dispositivo</p>
+                          <p className="text-xs text-blue-200/70 mt-1">
+                              Recibe alertas de nuevas reservas aunque la app esté cerrada (Requiere instalar la app en el inicio del celular).
+                          </p>
+                      </div>
+                  </div>
+                  <button 
+                      onClick={handleEnablePushNotifications}
+                      disabled={requestingPush}
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2.5 rounded text-xs uppercase tracking-widest transition-colors flex justify-center items-center gap-2"
+                  >
+                      {requestingPush ? <Loader2 size={16} className="animate-spin" /> : <Bell size={16} />}
+                      {requestingPush ? "Vinculando..." : "Vincular este Celular"}
+                  </button>
+              </div>
+
+              {/* Toggles tradicionales */}
+              <div className="pt-2 border-t border-white/10 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                        <span className="text-sm text-white font-medium block">Alerta de Nueva Reserva</span>
+                        <span className="text-[10px] text-txt-muted uppercase">Activa el sonido global</span>
+                    </div>
+                    <Toggle active={notifications.newBooking} onClick={() => setNotifications({...notifications, newBooking: !notifications.newBooking})} />
+                  </div>
+                  
+                  {/* Comentado temporalmente según tu solicitud
+                  <div className="flex items-center justify-between opacity-50 pointer-events-none">
+                    <div>
+                        <span className="text-sm text-txt-muted block">Alerta de Cancelación</span>
+                        <span className="text-[10px] text-txt-muted uppercase">Próximamente</span>
+                    </div>
+                    <Toggle active={notifications.cancellation} onClick={() => {}} />
+                  </div>
+                  */}
               </div>
           </div>
       </section>

@@ -1,0 +1,33 @@
+// Importamos los scripts de Firebase especiales para el Service Worker
+importScripts('https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging-compat.js');
+
+//  ESTO ES 100% SEGURO: Son solo identificadores públicos del proyecto.
+// (NO incluyas aquí ni el Private Key ni contraseñas de correo).
+const firebaseConfig = {
+  apiKey: "AIzaSyDQFGX0i0M3HLqe-WBFM9d-CTGX9zSH_bs",
+  authDomain: "barbershop-1f2fe.firebaseapp.com",
+  projectId: "barbershop-1f2fe",
+  storageBucket: "barbershop-1f2fe.firebasestorage.app",
+  messagingSenderId: "360306849794",
+  appId: "1:360306849794:web:15fd03aa81f7d5f95c8f1b"
+};
+
+// Inicializamos Firebase en segundo plano
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
+
+// Esta función se activa SOLO cuando la página web está cerrada o en segundo plano
+messaging.onBackgroundMessage((payload) => {
+  console.log('[Service Worker] Recibida notificación en segundo plano:', payload);
+
+  const notificationTitle = payload.notification.title || '¡Nueva Reserva!';
+  const notificationOptions = {
+    body: payload.notification.body || 'Tienes una nueva cita agendada.',
+    icon: '/vite.svg', 
+    badge: '/vite.svg',
+    data: payload.data
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});

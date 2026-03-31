@@ -19,74 +19,89 @@ export const useBarberSchedule = (barberId: string | undefined, date: string) =>
       setLoadingSchedule(true);
       
       try {
-        // --- OPTIMIZACIÓN: PARALELISMO ---
+        // --- OPTIMIZACIÓN: PARALELISMO CON LOCKS ---
         const barberRef = doc(db, "barbers", barberId);
         const barberPromise = getDoc(barberRef);
 
-        const q = query(
+        // 1. Promesa de citas confirmadas/pendientes
+        const qAppointments = query(
             collection(db, "appointments"),
             where("barberId", "==", barberId),
             where("date", "==", date),
             where("status", "!=", "cancelled") 
         );
-        const appointmentsPromise = getDocs(q);
+        const appointmentsPromise = getDocs(qAppointments);
 
-        const [barberSnap, appointmentsSnap] = await Promise.all([
+        // 2. NUEVO: Promesa de bloqueos temporales (Asientos de cine)
+        const qLocks = query(
+            collection(db, "locks"),
+            where("barberId", "==", barberId),
+            where("date", "==", date)
+        );
+        const locksPromise = getDocs(qLocks);
+
+        // Ejecutamos las 3 consultas al mismo tiempo para máxima velocidad
+        const [barberSnap, appointmentsSnap, locksSnap] = await Promise.all([
           barberPromise, 
-          appointmentsPromise
+          appointmentsPromise,
+          locksPromise
         ]);
 
         // --- PROCESAMIENTO DE DATOS ---
         let startHour = DEFAULT_START;
         let endHour = DEFAULT_END;
-        let isDayEnabled = true; // Bandera para saber si trabaja ese día
+        let isDayEnabled = true;
 
         if (barberSnap.exists()) {
           const data = barberSnap.data();
           if (data.schedule) {
-            
-            // 1. Revisar si la agenda está apagada por completo (vacaciones)
             if (data.schedule.active === false) {
                 isDayEnabled = false;
             }
 
-            // 2. Revisar si el día específico está apagado (ej. Domingo)
             if (data.schedule.days) {
-                // Truco: Agregamos T12:00:00 para evitar que la zona horaria nos cambie el día
                 const currentDayIndex = new Date(date + "T12:00:00").getDay(); 
-                
-                // getDay() devuelve 0 para Domingo, 1 para Lunes, etc.
                 const daysMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
                 const dayKey = daysMap[currentDayIndex];
 
-                // Si en la BD ese día está en false, desactivamos el día
                 if (data.schedule.days[dayKey] === false) {
                     isDayEnabled = false;
                 }
             }
 
-            // 3. Asignar horas de apertura y cierre
             if (data.schedule.start) startHour = parseInt(data.schedule.start.split(":")[0]);
             if (data.schedule.end) endHour = parseInt(data.schedule.end.split(":")[0]);
           }
         }
 
-        // Si el día NO está habilitado (es domingo y no trabaja), devolvemos un array vacío de inmediato
         if (!isDayEnabled) {
             setAvailableTimes([]);
             setLoadingSchedule(false);
             return;
         }
 
-        // B. Listar horas ocupadas
-        const takenTimes = appointmentsSnap.docs.map(doc => doc.data().time);
+        // --- B. LISTAR HORAS OCUPADAS Y BLOQUEADAS ---
+        
+        // Citas reales guardadas
+        const takenAppointments = appointmentsSnap.docs.map(doc => doc.data().time);
 
-        // C. Generar Array Final solo si el día es laborable
+        // Bloqueos temporales vigentes
+        const now = new Date().getTime();
+        const activeLocks = locksSnap.docs
+            .map(doc => doc.data())
+            // FILTRO CLAVE: Solo tomamos en cuenta los bloqueos que NO han expirado
+            .filter(lockData => lockData.expiresAt > now) 
+            .map(lockData => lockData.time);
+
+        // Unimos ambas listas (Las horas ocupadas reales + Las horas reservadas temporalmente)
+        const allTakenTimes = [...takenAppointments, ...activeLocks];
+
+        // --- C. GENERAR ARRAY FINAL ---
         const times: string[] = [];
         for (let i = startHour; i < endHour; i++) {
           const timeSlot = `${i}:00`;
-          // Solo agregamos si NO está tomada
-          if (!takenTimes.includes(timeSlot)) {
+          // Solo agregamos si NO está en nuestra lista combinada de ocupadas/bloqueadas
+          if (!allTakenTimes.includes(timeSlot)) {
              times.push(timeSlot);
           }
         }
