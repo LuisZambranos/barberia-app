@@ -19,14 +19,14 @@ const messaging = firebase.messaging();
 
 // Esta función se activa SOLO cuando la página web está cerrada o en segundo plano
 messaging.onBackgroundMessage((payload) => {
-  console.log('[Service Worker] Recibida notificación en segundo plano:', payload);
+  console.log('[Service Worker] Recibida data invisible:', payload);
 
-  const notificationTitle = payload.notification.title || '¡Nueva Reserva!';
+  // Ahora leemos de payload.data porque Vercel lo envía así
+  const notificationTitle = payload.data.title || '¡Nueva Reserva!';
   const notificationOptions = {
-    body: payload.notification.body || 'Tienes una nueva cita agendada.',
-    icon: '/vite.svg', 
-    badge: '/vite.svg',
-    data: payload.data
+    body: payload.data.body || 'Tienes una nueva cita agendada.',
+    icon: '/logo-1png', // <-- PON EL NOMBRE EXACTO DE TU LOGO AQUÍ
+    badge: '/logo-1.png', // <-- Y AQUÍ
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

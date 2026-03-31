@@ -29,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // 2. Preparamos el mensaje Push
     const message = {
-      notification: {
+      data: {
         title: title,
         body: body,
       },
