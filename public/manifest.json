@@ -1,20 +1,22 @@
 {
-  "name": "AJ Studio",
-  "short_name": "AJ",
+  "name": "A&J Bronze",
+  "short_name": "A&J Bronze",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
+  "background_color": "#121212",
   "theme_color": "#D4AF37",
   "icons": [
     {
       "src": "/logo-1.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/logo-1.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
