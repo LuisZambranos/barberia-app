@@ -19,8 +19,8 @@ const TEAM_DATA: Barber[] = [
     role: "BARBER & COLOR",
     specialty: "Estilo Urbano & Colorimetría", // Lo dejamos en los datos por si se usa en otro lado, pero no se renderiza
     image: barbero1,
-    instagram: "https://instagram.com",
-    whatsapp: "https://wa.me/56912345678"
+    instagram: "https://www.instagram.com/ajstudio.cl?igsh=dnVmMmU4YTgyNDZ1&utm_source=qr",
+    whatsapp: "https://wa.me/56974322313"
   },
   {
     id: "YsWJfoPcBaRN7hG5KWgCbs6XQc92",
@@ -29,7 +29,7 @@ const TEAM_DATA: Barber[] = [
     role: "SENIOR STYLIST",
     specialty: "Degradados (Fade) & Diseños",
     image: barbero2,
-    instagram: "https://instagram.com",
+    instagram: "https://www.instagram.com/alvaro_m46?igsh=MWlxYzRvdnQ1Nzk4NA%3D%3D&utm_source=qr",
     whatsapp: "https://wa.me/56937605937"
   },
   {
@@ -39,8 +39,8 @@ const TEAM_DATA: Barber[] = [
     role: "ESPECIALISTA BARBA",
     specialty: "Perfilado & Toalla Caliente",
     image: barbero3,
-    instagram: "https://instagram.com",
-    whatsapp: "https://wa.me/56912345678"
+    instagram: "https://www.instagram.com/reynold_barber?igsh=Ymdzd2o1aHoxNWVw",
+    whatsapp: "https://wa.me/56920754516"
   },
   {
     id: "58tCb3NW5uSjrHHnPOmzS3tTxII2",
@@ -49,8 +49,8 @@ const TEAM_DATA: Barber[] = [
     role: "MASTER BARBER",
     specialty: "Cortes Clásicos & Navaja",
     image: barbero4,
-    instagram: "https://instagram.com",
-    whatsapp: "https://wa.me/56912345678"
+    instagram: "https://www.instagram.com/javibarber_og?igsh=enMzdzRhNm90emZy&utm_source=qr",
+    whatsapp: "https://wa.me/56948635767"
   },
   {
     id: "Tzjnvhso43ffT3x0T8rlWVEs3XG3",
@@ -59,8 +59,8 @@ const TEAM_DATA: Barber[] = [
     role: "ESPECIALISTA BARBA",
     specialty: "Perfilado & Toalla Caliente",
     image: barbero5,
-    instagram: "https://instagram.com",
-    whatsapp: "https://wa.me/56912345678"
+    instagram: "https://www.instagram.com/alejvm_barber?utm_source=qr&igsh=MWt3cHg5d21panl0NQ==",
+    whatsapp: "https://wa.me/56930561123"
   },{
     id: "SfCyyndvi4da8SXT6BgXwUHgZ6A3",
     name: "Jose",
@@ -68,8 +68,8 @@ const TEAM_DATA: Barber[] = [
     role: "ESPECIALISTA BARBA",
     specialty: "Perfilado & Toalla Caliente",
     image: barbero6,
-    instagram: "https://instagram.com",
-    whatsapp: "https://wa.me/56912345678"
+    instagram: "https://www.instagram.com/ajstudio.cl?igsh=dnVmMmU4YTgyNDZ1&utm_source=qr",
+    whatsapp: "https://wa.me/56935565836"
   }
 ];
 

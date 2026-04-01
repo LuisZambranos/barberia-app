@@ -19,7 +19,7 @@ export const sendConfirmationMessage = (appt: Appointment) => {
   const barber = appt.barberName ? appt.barberName.trim() : "nosotros";
 
   // 4. Armamos el mensaje INCLUYENDO AL BARBERO
-  const message = `Hola *${appt.clientName}* ${wave}, te escribo de *Barber Shop*.\n\nQuería confirmar tu cita con *${barber}* ${scissors}: \n${pole} Servicio: *${service}*\n${calendar} Fecha: *${appt.date}*\n${clock} Hora: *${appt.time}*\n\n¿Me confirmas tu asistencia?`;
+  const message = `Hola *${appt.clientName}* ${wave}, te escribo de *Aj Studio*.\n\nQuería confirmar tu cita con *${barber}* ${scissors}: \n${pole} Servicio: *${service}*\n${calendar} Fecha: *${appt.date}*\n${clock} Hora: *${appt.time}*\n\n¿Me confirmas tu asistencia?`;
 
   // 5. Codificamos y enviamos
   const encodedMessage = encodeURIComponent(message);

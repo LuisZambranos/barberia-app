@@ -87,6 +87,15 @@ const Navbar = () => {
                 Panel de Barbero
               </Link>
             )}
+            {/* BOTÓN DE ACCIÓN: Visible Admin */}
+            {(role === 'admin') && (
+              <Link 
+                to="/admin"
+                className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
+              >
+                Panel Admin
+              </Link>
+            )}
           </nav>
 
           {/* INTERRUPTOR MÓVIL */}
@@ -128,13 +137,23 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* BOTÓN DE ACCIÓN: Visible si no hay usuario (anonimo) O si es cliente */}
+            {/* BOTÓN DE ACCIÓN: Visible si es barbero */}
             {(role === 'barber') && (
               <Link 
                 to="/barber" 
                 className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
               >
                 Panel de Barbero
+              </Link>
+            )}
+
+            {/* BOTÓN DE ACCIÓN: Visible si es admin */}
+            {(role === 'admin') && (
+              <Link 
+                to="/admin" 
+                className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
+              >
+                Panel Admin
               </Link>
             )}
             

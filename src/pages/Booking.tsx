@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore'; 
 import { db } from '../firebase/config';
 import { Link } from 'react-router-dom';
-import { Copy, CheckCircle2, PlusCircle, Scissors } from 'lucide-react'; 
+import { Copy, CheckCircle2, PlusCircle, Scissors, AlertTriangle, ShieldCheck, AlertCircle } from 'lucide-react'; 
 import { useAuth } from '../context/AuthContext';
 import  {useToast} from "../context/ToastContext"; 
 
@@ -64,6 +64,7 @@ const Booking = () => {
   
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType | null>(null);
   const [copiedDetail, setCopiedDetail] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [clientData, setClientData] = useState({ name: '', phone: '', email: '' });
   // --- NUEVO: AUTOCOMPLETADO DEL CRM ---
@@ -137,9 +138,15 @@ const Booking = () => {
   const currentTotal = (selectedService?.price || 0) + (hasBeardAddon ? 5000 : 0);
   // --------------------------------------
 
-  // --- NUEVA LÓGICA: FILTRAR HORAS PASADAS ---
-  const isToday = selectedDate === new Date().toISOString().split('T')[0];
+// --- NUEVA LÓGICA: FILTRAR HORAS PASADAS ---
+  // Obtenemos la fecha local en formato YYYY-MM-DD sin depender de UTC
   const now = new Date();
+  const localYear = now.getFullYear();
+  const localMonth = String(now.getMonth() + 1).padStart(2, '0');
+  const localDay = String(now.getDate()).padStart(2, '0');
+  const localTodayString = `${localYear}-${localMonth}-${localDay}`;
+  
+  const isToday = selectedDate === localTodayString;
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
 
@@ -643,31 +650,20 @@ const handleFinalizeBooking = async () => {
             <p className="text-center text-txt-muted text-sm mb-8">Selecciona cómo deseas abonar tu servicio.</p>
 
             <div className="space-y-4">
-              {availableMethods.cash && (
-                <div 
-                  onClick={() => setSelectedPaymentMethod('cash')}
-                  className={`p-6 border rounded-sm cursor-pointer transition-all duration-300 flex items-center justify-between
-                    ${selectedPaymentMethod === 'cash' ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(212,175,55,0.2)]' : 'border-white/10 bg-white/2 hover:border-gold/30'}`}
-                >
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Efectivo en el Local</h3>
-                    <p className="text-xs text-txt-muted">Pagas directamente al finalizar tu servicio.</p>
-                  </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPaymentMethod === 'cash' ? 'border-gold bg-gold' : 'border-white/20'}`}>
-                     {selectedPaymentMethod === 'cash' && <CheckCircle2 size={16} className="text-bg-main" />}
-                  </div>
-                </div>
-              )}
-
+              
+              {/* OPCIÓN 1: PAGO ONLINE (Seguro) */}
               {availableMethods.online && (
                  <div 
                  onClick={() => setSelectedPaymentMethod('online')}
-                 className={`p-6 border rounded-sm cursor-pointer transition-all duration-300 flex items-center justify-between
-                   ${selectedPaymentMethod === 'online' ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(212,175,55,0.2)]' : 'border-white/10 bg-white/2 hover:border-gold/30'}`}
+                 className={`p-6 border rounded-xl cursor-pointer transition-all duration-300 flex items-center justify-between
+                   ${selectedPaymentMethod === 'online' ? 'border-gold bg-gold/10 shadow-[0_0_20px_rgba(212,175,55,0.2)]' : 'border-white/10 bg-white/5 hover:border-gold/30'}`}
                >
                  <div>
-                   <h3 className="text-lg font-bold text-white">Pago Online (Webpay)</h3>
-                   <p className="text-xs text-txt-muted">Paga ahora mismo de forma rápida y segura.</p>
+                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                     Pago Online (Webpay) <ShieldCheck size={18} className="text-green-400" />
+                   </h3>
+                   <p className="text-xs text-txt-muted mt-1">Paga ahora de forma segura.</p>
+                   <p className="text-[10px] text-green-400 font-bold uppercase tracking-widest mt-2 bg-green-500/10 w-fit px-2 py-1 rounded">✓ Hora 100% Asegurada</p>
                  </div>
                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPaymentMethod === 'online' ? 'border-gold bg-gold' : 'border-white/20'}`}>
                     {selectedPaymentMethod === 'online' && <CheckCircle2 size={16} className="text-bg-main" />}
@@ -675,17 +671,21 @@ const handleFinalizeBooking = async () => {
                </div>
               )}
 
+              {/* OPCIÓN 2: TRANSFERENCIA (Seguro) */}
               {availableMethods.transfer && (
-                <div className={`transition-all duration-300 border rounded-sm overflow-hidden
-                    ${selectedPaymentMethod === 'transfer' ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(212,175,55,0.2)]' : 'border-white/10 bg-white/2 hover:border-gold/30'}`}>
+                <div className={`transition-all duration-300 border rounded-xl overflow-hidden
+                    ${selectedPaymentMethod === 'transfer' ? 'border-gold bg-gold/10 shadow-[0_0_20px_rgba(212,175,55,0.2)]' : 'border-white/10 bg-white/5 hover:border-gold/30'}`}>
                   
                   <div 
                     onClick={() => setSelectedPaymentMethod('transfer')}
                     className="p-6 cursor-pointer flex items-center justify-between"
                   >
                     <div>
-                      <h3 className="text-lg font-bold text-white">Transferencia Bancaria</h3>
-                      <p className="text-xs text-txt-muted">Realiza el abono antes de tu cita y asegura tu hora.</p>
+                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        Transferencia Bancaria <ShieldCheck size={18} className="text-green-400" />
+                      </h3>
+                      <p className="text-xs text-txt-muted mt-1">Transfiere el abono para garantizar tu cupo.</p>
+                      <p className="text-[10px] text-green-400 font-bold uppercase tracking-widest mt-2 bg-green-500/10 w-fit px-2 py-1 rounded">✓ Hora 100% Asegurada</p>
                     </div>
                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPaymentMethod === 'transfer' ? 'border-gold bg-gold' : 'border-white/20'}`}>
                        {selectedPaymentMethod === 'transfer' && <CheckCircle2 size={16} className="text-bg-main" />}
@@ -693,11 +693,12 @@ const handleFinalizeBooking = async () => {
                   </div>
 
                   <div className={`transition-all duration-500 ${selectedPaymentMethod === 'transfer' ? 'max-h-[500px] border-t border-gold/20' : 'max-h-0'}`}>
-                     <div className="p-6">
+                     <div className="p-6 bg-black/20">
                         <p className="text-xs text-gold uppercase tracking-widest font-bold mb-4">Datos para transferir</p>
                         
                         {bankDetails?.accountNumber ? (
                           <div className="space-y-3">
+                            {/* ... (Tus datos de banco se mantienen igual) ... */}
                             <div className="flex justify-between items-center border-b border-white/5 pb-2">
                               <span className="text-sm text-txt-muted">RUT</span>
                               <span className="text-sm font-mono text-white">{bankDetails.rut}</span>
@@ -745,12 +746,63 @@ const handleFinalizeBooking = async () => {
                   </div>
                 </div>
               )}
+
+              {/* OPCIÓN 3: EFECTIVO (Sujeto a disponibilidad) */}
+              {availableMethods.cash && (
+                <div 
+                  onClick={() => setSelectedPaymentMethod('cash')}
+                  className={`p-6 border rounded-xl cursor-pointer transition-all duration-300 flex items-center justify-between
+                    ${selectedPaymentMethod === 'cash' ? 'border-gold bg-gold/10 shadow-[0_0_20px_rgba(212,175,55,0.2)]' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
+                >
+                  <div className="pr-4">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      Efectivo en el Local
+                    </h3>
+                    <p className="text-xs text-txt-muted mt-1 leading-relaxed">El barbero deberá aprobar tu cita manualmente. Si otro cliente abona la misma hora, podrías perder el cupo.</p>
+                    <p className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest mt-3 bg-yellow-500/10 border border-yellow-500/20 w-fit px-2 py-1 rounded flex items-center gap-1">
+                      <AlertCircle size={12} /> Sujeto a disponibilidad
+                    </p>
+                  </div>
+                  <div className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPaymentMethod === 'cash' ? 'border-gold bg-gold' : 'border-white/20'}`}>
+                     {selectedPaymentMethod === 'cash' && <CheckCircle2 size={16} className="text-bg-main" />}
+                  </div>
+                </div>
+              )}
+
             </div>
 
+            {/* --- POLÍTICA DE CANCELACIÓN (NUEVO) --- */}
+            <div className="mt-8 bg-red-500/5 border border-red-500/20 rounded-xl p-5">
+              <h4 className="text-red-400 font-bold text-sm mb-3 flex items-center gap-2">
+                <AlertTriangle size={18} /> Política de Cancelación Estricta
+              </h4>
+              <ul className="text-txt-muted text-xs space-y-2 list-disc pl-4 mb-5">
+                <li>Las cancelaciones o reprogramaciones deben realizarse con al menos <strong>2 horas de anticipación</strong>.</li>
+                <li><strong>No asistir a la cita</strong> o cancelar tarde resultará en la pérdida del 50% del abono,si es en efectivo el cobro del servicio sera en tu próxima visita.</li>
+                <li>Tu hora se considera perdida si tienes un <strong>atraso superior a 10 minutos</strong>.</li>
+              </ul>
+
+              <label className="flex items-start gap-3 cursor-pointer p-3 bg-black/20 rounded-lg border border-white/5 hover:bg-white/5 transition-colors">
+                <div className="relative flex items-center justify-center mt-0.5">
+                  <input 
+                    type="checkbox" 
+                    className="peer appearance-none w-5 h-5 border-2 border-white/30 rounded bg-transparent checked:bg-gold checked:border-gold transition-all cursor-pointer"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  />
+                  <CheckCircle2 size={14} className="absolute text-bg-main opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
+                </div>
+                <span className="text-sm font-medium text-white leading-tight">
+                  He leído y acepto la política de cancelación y las condiciones del servicio.
+                </span>
+              </label>
+            </div>
+
+            {/* BOTONERA FINAL */}
             <div className="flex flex-col sm:flex-row gap-4 border-t border-white/10 mt-8 pt-6">
               <button 
                 onClick={handleFinalizeBooking} 
-                disabled={!selectedPaymentMethod || isSubmitting}
+                disabled={!selectedPaymentMethod || isSubmitting || !acceptedTerms}
                 className="w-full bg-gold text-bg-main p-4 rounded-sm font-black text-sm uppercase tracking-[0.2em] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gold-hover transition-all shadow-xl shadow-gold/20 flex justify-center items-center"
               >
                 {isSubmitting ? "Procesando Reserva..." : `Confirmar por $${currentTotal.toLocaleString()}`}
