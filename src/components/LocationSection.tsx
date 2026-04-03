@@ -1,5 +1,6 @@
 import { copyToClipboard } from '../utils/clipboard';
 import { useToast } from '../context/ToastContext';
+import ScheduleWidget from './ScheduleWidget';
 
 const LocationSection = () => {
   const address = "Benzanilla 1419, Independencia, Santiago, Chile";
@@ -29,21 +30,8 @@ const LocationSection = () => {
               </h2>
             </div>
 
-            {/* TABLA DE HORARIOS SEMANALES */}
-            <div className="space-y-4 max-w-md">
-              <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                <span className="text-txt-muted text-xs uppercase tracking-[0.2em] font-bold">Lunes — Viernes</span>
-                <span className="text-txt-main font-mono font-bold text-sm tracking-tighter">10:00 AM — 20:00 PM</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                <span className="text-txt-muted text-xs uppercase tracking-[0.2em] font-bold">Sábado</span>
-                <span className="text-txt-main font-mono font-bold text-sm tracking-tighter">09:00 AM — 18:00 PM</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                <span className="text-txt-muted text-xs uppercase tracking-[0.2em] font-bold">Domingo</span>
-                <span className="text-error font-black italic text-xs uppercase tracking-widest">Cerrado</span>
-              </div>
-            </div>
+            {/* TABLA DE HORARIOS SEMANALES DINÁMICA */}
+            <ScheduleWidget variant="list" />
 
             {/* TARJETA DE DIRECCIÓN CON ACCIONES */}
             <div className="bg-bg-card p-8 border-l-2 border-gold relative group overflow-hidden shadow-2xl">

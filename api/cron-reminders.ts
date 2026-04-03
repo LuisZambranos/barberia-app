@@ -16,12 +16,38 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 export default async function handler(req: any, res: any) {
-  // SEGURIDAD DE VERCEL (Comentada temporalmente para probar en localhost)
+  // SEGURIDAD DE VERCEL (Comentada temporalmente para probar en localhost si lo necesitas)
   if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: "No autorizado" });
   }
 
   try {
+    // ==========================================
+    // 1. TAREA: LIMPIEZA DE CANDADOS FANTASMA
+    // ==========================================
+    const now = new Date().getTime();
+    const locksRef = db.collection("locks");
+    
+    // Buscamos los candados cuyo tiempo ya expiró (en el pasado)
+    const expiredLocksSnapshot = await locksRef.where("expiresAt", "<", now).get();
+    
+    let deletedLocksCount = 0;
+    if (!expiredLocksSnapshot.empty) {
+      const deletePromises: Promise<any>[] = [];
+      
+      // Borramos cada documento fantasma
+      expiredLocksSnapshot.docs.forEach((doc) => {
+        deletePromises.push(doc.ref.delete());
+        deletedLocksCount++;
+      });
+      
+      // Esperamos a que se borren todos
+      await Promise.all(deletePromises);
+    }
+
+    // ==========================================
+    // 2. TAREA: RECORDATORIOS DE VISITA (15 Días)
+    // ==========================================
     const today = new Date();
     const targetDate = new Date(today);
     targetDate.setDate(targetDate.getDate() - 15);
@@ -37,37 +63,37 @@ export default async function handler(req: any, res: any) {
       .get();
 
     const clientsToEmail = snapshot.docs.map(doc => doc.data());
-
-    if (clientsToEmail.length === 0) {
-      return res.status(200).json({ success: true, message: "No hay clientes para recordar hoy." });
-    }
-
-    const apiUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}/api/sendEmail` 
-      : `http://127.0.0.1:3000/api/sendEmail`;
-
     let sentCount = 0;
 
-    for (const client of clientsToEmail) {
-      if (!client.email || !client.name) continue;
+    if (clientsToEmail.length > 0) {
+      const apiUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}/api/sendEmail` 
+        : `http://127.0.0.1:3000/api/sendEmail`;
 
-      const firstName = client.name.split(' ')[0];
+      for (const client of clientsToEmail) {
+        if (!client.email || !client.name) continue;
 
-      await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          to: client.email, 
-          clientName: firstName,
-          type: 'reminder' 
-        }),
-      });
-      sentCount++;
+        const firstName = client.name.split(' ')[0];
+
+        await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            to: client.email, 
+            clientName: firstName,
+            type: 'reminder' 
+          }),
+        });
+        sentCount++;
+      }
     }
 
+    // ==========================================
+    // REPORTE FINAL
+    // ==========================================
     return res.status(200).json({ 
         success: true, 
-        message: `Proceso completado . Se enviaron ${sentCount} recordatorios.` 
+        message: `Cron finalizado con éxito. Se barrieron ${deletedLocksCount} candados fantasma y se enviaron ${sentCount} correos de recordatorio.` 
     });
 
   } catch (error) {

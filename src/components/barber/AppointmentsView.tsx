@@ -37,7 +37,7 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null); 
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null); // Controla qué menú está abierto
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const handleStatusChange = async (appointmentId: string, newStatus: 'pending' | 'confirmed' | 'cancelled' | 'completed') => {
     setUpdatingId(appointmentId);
@@ -47,7 +47,7 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
         alert("Hubo un error al actualizar la cita.");
     } finally {
         setUpdatingId(null);
-        setOpenDropdownId(null); // Cierra el menú tras actualizar
+        setOpenDropdownId(null);
     }
   };
 
@@ -96,11 +96,10 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
   const groupedFuture = groupAppointmentsByDate(futureAppts);
 
   const getStatusDisplay = (appt: Appointment) => {
-      if (appt.status === 'completed') return { text: 'Realizada', colorClass: 'bg-blue-500/20 text-blue-400 border-blue-500/30' };
+      if (appt.status === 'completed') return { text: 'Realizada', colorClass: 'bg-green-500/20 text-green-400 border-green-500/30' };
       if (appt.status === 'cancelled') return { text: 'Cancelada', colorClass: 'bg-red-500/20 text-red-400 border-red-500/30' };
-      if (appt.status === 'confirmed') return { text: 'Confirmada', colorClass: 'bg-green-500/20 text-green-400 border-green-500/30' };
+      if (appt.status === 'confirmed') return { text: 'Confirmada', colorClass: 'bg-blue-500/20 text-blue-400 border-blue-500/30' };
       
-      // Si el estado es 'pending'
       if (appt.paymentMethod === 'transfer') {
           return { text: 'Pago Pendiente', colorClass: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 animate-pulse' };
       }
@@ -115,7 +114,6 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
     return (
     <div className={`flex flex-col h-full bg-bg-card rounded-xl border border-white/5 overflow-hidden transition-all shadow-lg group ${isDimmed || isCompleted ? 'opacity-60 hover:opacity-100 grayscale hover:grayscale-0' : 'hover:-translate-y-1 hover:border-gold/30'}`}>
         
-        {/* CABECERA (Fija arriba) */}
         <div className="bg-white/5 p-4 flex justify-between items-start shrink-0">
             <div className="flex items-center gap-2 text-xl font-black text-white"><Clock className="text-gold" size={20} />{appt.time}</div>
             <span className={`text-[10px] font-bold px-2 py-1 rounded border uppercase tracking-wide ${statusDisplay.colorClass}`}>
@@ -123,11 +121,9 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
             </span>
         </div>
 
-        {/* CONTENIDO PRINCIPAL (Ocupa todo el espacio restante empujando el footer abajo) */}
         <div className="p-5 flex flex-col grow">
             <h3 className="text-lg font-bold text-txt-main mb-3">{appt.clientName}</h3>
             
-            {/* CORREO Y TELÉFONO RESTAURADOS */}
             <div className="flex flex-col gap-1 text-xs text-txt-muted mb-4">
                 <div className="flex items-center gap-2"><Phone size={14} className="text-gold/70" /> {appt.clientPhone}</div>
                 <div className="flex items-center gap-2">
@@ -160,7 +156,6 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
                 )}
             </div>
 
-            {/* Este mt-auto garantiza que el precio se vaya al fondo del contenedor principal */}
             <div className="flex justify-between items-end border-t border-white/5 pt-4 mt-auto">
                 <PaymentBadge method={appt.paymentMethod} />
                 <div className="flex flex-col items-end">
@@ -170,35 +165,37 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
             </div>
         </div>
 
-       {/* BOTONERA DE ACCIÓN (Siempre pegada al borde inferior) */}
         <div className="flex flex-col shrink-0">
             <div className="grid grid-cols-2 border-t border-white/5 divide-x divide-white/5">
                 <a href={`tel:${appt.clientPhone}`} className="p-3 flex justify-center items-center gap-2 hover:bg-gold hover:text-bg-main transition-colors text-xs font-bold text-txt-muted"><Phone size={14} /> Llamar</a>
                 <button onClick={() => sendConfirmationMessage(appt)} className="p-3 flex justify-center items-center gap-2 hover:bg-green-600 hover:text-white transition-colors text-xs font-bold text-green-500"><MessageCircle size={14} /> WhatsApp</button>
             </div>
             
-            {/* DESPLEGABLE DE ESTADOS (Corregido: Flotante absoluto con Animación Suave) */}
             {!isCompleted && appt.status !== 'cancelled' && (
                 <div className="relative border-t border-white/5 bg-black/20">
                     
-                    {/* Opciones del menú (Deslizan suavemente desde abajo) */}
                     <div className={`absolute bottom-full left-0 w-full flex flex-col bg-bg-card/95 backdrop-blur-md border-t border-white/10 shadow-[0_-15px_40px_rgba(0,0,0,0.8)] transition-all duration-300 ease-out z-10 ${openDropdownId === appt.id ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-4 opacity-0 pointer-events-none'}`}>
                         {appt.status !== 'confirmed' && (
-                            <button onClick={(e) => { e.stopPropagation(); handleStatusChange(appt.id, 'confirmed'); }} className="p-4 text-xs font-bold text-green-400 hover:bg-green-500/10 border-b border-white/5 transition-colors">
+                            <button onClick={(e) => { e.stopPropagation(); handleStatusChange(appt.id, 'confirmed'); }} className="p-4 text-xs font-bold text-blue-400 hover:bg-blue-500/10 border-b border-white/5 transition-colors">
                                 Aprobar / Confirmar Reserva
                             </button>
                         )}
                         {appt.status !== 'completed' && (
-                            <button onClick={(e) => { e.stopPropagation(); handleStatusChange(appt.id, 'completed'); }} className="p-4 text-xs font-bold text-blue-400 hover:bg-blue-500/10 border-b border-white/5 transition-colors">
+                            <button onClick={(e) => { e.stopPropagation(); handleStatusChange(appt.id, 'completed'); }} className="p-4 text-xs font-bold text-green-400 hover:bg-green-500/10 border-b border-white/5 transition-colors">
                                 Marcar como Realizada
                             </button>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); handleStatusChange(appt.id, 'cancelled'); }} className="p-4 text-xs font-bold text-red-400 hover:bg-red-500/10 transition-colors">
+                        {/* AQUÍ ESTÁ EL CAMBIO DE SEGURIDAD PARA CANCELAR */}
+                        <button onClick={(e) => { 
+                            e.stopPropagation(); 
+                            if (window.confirm('¿Estás seguro de cancelar esta reserva? La hora quedará liberada para otros clientes.')) {
+                                handleStatusChange(appt.id, 'cancelled'); 
+                            }
+                        }} className="p-4 text-xs font-bold text-red-400 hover:bg-red-500/10 transition-colors">
                             Cancelar Reserva
                         </button>
                     </div>
 
-                    {/* Botón principal (Abre/Cierra el menú) */}
                     <button 
                         onClick={(e) => { 
                             e.preventDefault(); 
@@ -246,9 +243,9 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
             {todayCompleted.length > 0 && (
                 <section>
                     <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-2">
-                        <CheckCircle2 className="text-blue-400" size={20} />
+                        <CheckCircle2 className="text-green-400" size={20} />
                         <h2 className="text-lg font-black text-white uppercase tracking-tight opacity-70">Realizadas Hoy</h2>
-                        <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-bold px-2 py-1 rounded-full">{todayCompleted.length}</span>
+                        <span className="bg-green-500/10 text-green-400 border border-green-500/20 text-xs font-bold px-2 py-1 rounded-full">{todayCompleted.length}</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">{todayCompleted.map(appt => <AppointmentCard key={appt.id} appt={appt} isDimmed={true} />)}</div>
                 </section>

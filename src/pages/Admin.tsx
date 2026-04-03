@@ -6,7 +6,9 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState<'bookings' | 'schedule'>('bookings');
 
   return (
-    <div className="min-h-screen bg-bg-main text-txt-main p-4 sm:p-8 pt-24">
+    // EL FIX ESTÁ AQUÍ: pt-28 (móvil) md:pt-32 (escritorio) para que el Navbar no tape el título
+    <div className="min-h-screen bg-bg-main text-txt-main p-4 sm:p-8 pt-22 md:pt-24">
+      
       {/* Header Limpio */}
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gold">Panel de Administración</h1>

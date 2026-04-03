@@ -219,7 +219,7 @@ const AdminBookings = () => {
                       </span>
                     </div>
 
-                    <div className="flex-grow space-y-3">
+                    <div className="grow space-y-3">
                       <div>
                         <p className="text-xs text-txt-muted uppercase tracking-wider mb-1">Cliente</p>
                         <p className="text-white font-semibold text-lg leading-tight">{booking.clientName}</p>

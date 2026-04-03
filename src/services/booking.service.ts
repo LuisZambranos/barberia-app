@@ -1,9 +1,8 @@
-import { collection, doc, runTransaction, getDoc,deleteDoc } from "firebase/firestore";
+import { collection, doc, runTransaction, getDoc, deleteDoc, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 import type { Service } from "../models/Service";
 import type { Barber } from "../models/Barber";
 import type { PaymentMethodType } from "../models/Appointment";
-// NUEVO: Importamos todos los correos
 import { sendReviewEmail, sendConfirmationEmail, sendCancellationEmail } from "./email.service";
 
 interface BookingData {
@@ -15,7 +14,7 @@ interface BookingData {
   selectedItems: string[]; 
   hasBeardAddon: boolean;
   totalPrice: number;
-  status: 'pending' | 'confirmed'; // <-- IMPORTANTE: Ahora exigimos el status desde el frontend
+  status: 'pending' | 'confirmed';
   clientId?: string; 
   client: {
     name: string;
@@ -25,6 +24,22 @@ interface BookingData {
 }
 
 export const createAppointment = async (data: BookingData): Promise<string> => {
+  const q = query(
+    collection(db, "appointments"), 
+    where("barberId", "==", data.barber.id), 
+    where("date", "==", data.date)
+  );
+  
+  const snapshot = await getDocs(q);
+  const isOccupied = snapshot.docs.some(doc => {
+      const appt = doc.data();
+      return appt.time === data.time && appt.status !== "cancelled" && appt.status !== "canceled";
+  });
+
+  if (isOccupied) {
+      throw new Error("HORA_OCUPADA");
+  }
+
   const dateKey = data.date; 
   const counterRef = doc(db, "dailyCounters", dateKey);
 
@@ -61,7 +76,7 @@ export const createAppointment = async (data: BookingData): Promise<string> => {
         clientPhone: data.client.phone,
         clientEmail: data.client.email,
         
-        status: data.status, // <-- USAMOS EL STATUS QUE VIENE DEL FRONTEND
+        status: data.status,
         paymentMethod: data.paymentMethod, 
         createdAt: new Date().toISOString(),
       };
@@ -73,19 +88,20 @@ export const createAppointment = async (data: BookingData): Promise<string> => {
     return resultId;
 
   } catch (error) {
-    console.error("Error en createAppointment service:", error);
+    if (error instanceof Error && error.message !== "HORA_OCUPADA") {
+       console.error("Error en createAppointment service:", error);
+    }
     throw error;
   }
 };
 
 export const updateAppointmentStatus = async (
   appointmentId: string, 
-  newStatus: 'pending' | 'confirmed' | 'cancelled' | 'completed' // Nota: En el backend usamos 'canceled', ten ojo si aquí usas 'cancelled' con doble L.
+  newStatus: 'pending' | 'confirmed' | 'cancelled' | 'completed' 
 ): Promise<void> => {
   try {
     const appointmentRef = doc(db, "appointments", appointmentId);
     
-    // 1. Necesitamos leer los datos primero para saber a quién enviarle el correo
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let apptData: any = null;
 
@@ -96,27 +112,20 @@ export const updateAppointmentStatus = async (
       apptData = apptDoc.data();
       transaction.update(appointmentRef, { status: newStatus });
 
-      // --- AL COMPLETAR EL CORTE ACTUALIZAMOS SU PERFIL ---
       if (newStatus === 'completed' && apptData.clientId) {
         const userRef = doc(db, "users", apptData.clientId);
-        // Actualizamos su fecha de última visita
         transaction.set(userRef, { 
             lastVisitDate: new Date().toISOString() 
         }, { merge: true });
       }
     });
 
-// --- 2. ENVIAMOS EL CORREO FUERA DE LA TRANSACCIÓN (Trigger B) ---
     if (apptData && apptData.clientEmail) {
-      
-      // FIJO: Buscamos el teléfono del barbero en la BD
       const barberDocRef = doc(db, "barbers", apptData.barberId);
       const barberDoc = await getDoc(barberDocRef); 
       
-      // Si el barbero no lo ha configurado, enviamos el de soporte para que no falle
       const barberPhone = barberDoc.exists() && barberDoc.data().phone ? barberDoc.data().phone : '+56900000000';
 
-      // Armamos el payload con el teléfono y el método de pago fijos
       const emailPayload = {
         to: apptData.clientEmail,
         clientName: apptData.clientName,
@@ -125,10 +134,9 @@ export const updateAppointmentStatus = async (
         time: apptData.time,
         serviceName: apptData.serviceName,
         barberPhone: barberPhone,
-        paymentMethod: apptData.paymentMethod || 'cash' // Por si acaso
+        paymentMethod: apptData.paymentMethod || 'cash' 
       };
 
-      // Disparamos el correo correcto según el nuevo estado manual
       if (newStatus === 'confirmed') {
         await sendConfirmationEmail(emailPayload);
       } else if (newStatus === 'cancelled' || newStatus === 'canceled' as string) {
@@ -144,42 +152,42 @@ export const updateAppointmentStatus = async (
   }
 };
 
-// --- SISTEMA ANTI-COLISIONES (CANDADOS TEMPORALES) ---
-
 export const createTemporalLock = async (barberId: string, date: string, time: string): Promise<boolean> => {
-  // Creamos un ID único para esa hora exacta con ese barbero
   const lockId = `${barberId}_${date}_${time}`;
   const lockRef = doc(db, "locks", lockId);
 
   try {
-    // Usamos una transacción para que sea a prueba de balas si 2 personas hacen clic al mismo milisegundo
     const acquired = await runTransaction(db, async (transaction) => {
       const lockDoc = await transaction.get(lockRef);
       const now = new Date().getTime();
+      
+      const lockDurationMs = 5 * 60 * 1000; 
 
       if (lockDoc.exists()) {
         const lockData = lockDoc.data();
-        // Si el candado existe y su tiempo de expiración es mayor a AHORA, alguien más lo tiene
+        
         if (lockData.expiresAt > now) {
-          return false; // Falló, no pudimos tomar la hora
-        }
+          return false; 
+        } 
       }
 
-      // Si no existe o ya expiró, lo tomamos nosotros por 5 minutos (300,000 milisegundos)
-      const expiresAt = now + (5 * 60 * 1000);
+      const expiresAt = now + lockDurationMs;
+
       transaction.set(lockRef, {
         barberId,
         date,
         time,
-        expiresAt
+        expiresAt,
+        expireAtDate: new Date(expiresAt)
       });
 
-      return true; // ¡Candado adquirido!
+      return true; 
     });
 
     return acquired;
+    
   } catch (error) {
-    console.error("Error al crear candado temporal:", error);
+    console.error("Error en createTemporalLock:", error);
     return false;
   }
 };
@@ -188,7 +196,6 @@ export const releaseTemporalLock = async (barberId: string, date: string, time: 
   const lockId = `${barberId}_${date}_${time}`;
   const lockRef = doc(db, "locks", lockId);
   try {
-    // Si el usuario se arrepiente, borramos el candado para liberar la hora
     await deleteDoc(lockRef);
   } catch (error) {
     console.error("Error al liberar candado:", error);

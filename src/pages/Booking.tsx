@@ -208,7 +208,7 @@ Correo: ${bankDetails.email || ''}`.trim();
   }, [step]);
 
   // --- FUNCIONES ANTI-COLISIONES ---
-  const handleProceedToStep4 = async () => {
+const handleProceedToStep4 = async () => {
     if (!selectedBarber || !selectedDate || !selectedTime) return;
     
     setIsLocking(true);
@@ -218,9 +218,7 @@ Correo: ${bankDetails.email || ''}`.trim();
     if (success) {
       setStep(4); 
     } else {
-      // Como ya actualizamos el Provider, esto mostrará la alerta roja Y hará el sonido automáticamente
-      toast.error("¡Ups! Alguien acaba de reservar esta hora. Elige otra.");
-      setSelectedTime(null); 
+      toast.error("¡Ups! Alguien acaba de reservar esta hora.");
     }
   };
 
@@ -231,21 +229,19 @@ const handleFinalizeBooking = async () => {
     try {
       const finalPrice = selectedService.price + (hasBeardAddon ? 5000 : 0);
 
-      // --- 1. LÓGICA DEL ESTADO (Usando tu esquema exacto de BD) ---
+      // --- LÓGICA DEL ESTADO ---
       let initialStatus: 'pending' | 'confirmed' = 'pending';
-      
       if (selectedPaymentMethod === 'online') {
-        initialStatus = 'confirmed'; // Pago online siempre asegura el cupo
+        initialStatus = 'confirmed'; 
       } else if (selectedPaymentMethod === 'cash' && selectedBarber.autoConfirmCash) {
         initialStatus = 'confirmed';
       } else if (selectedPaymentMethod === 'transfer' && selectedBarber.autoConfirmTransfer) {
         initialStatus = 'confirmed';
       } else if (selectedBarber.autoConfirm) {
-        // Fallback por si activó el general
         initialStatus = 'confirmed'; 
       }
 
-      // --- 2. GUARDAR EN FIREBASE ---
+      // --- GUARDAR EN FIREBASE ---
       const ticketId = await createAppointment({
         service: selectedService,
         barber: selectedBarber,
@@ -255,12 +251,12 @@ const handleFinalizeBooking = async () => {
         selectedItems: selectedItems,
         hasBeardAddon: hasBeardAddon,
         totalPrice: finalPrice,
-        status: initialStatus, // <-- Mandamos el estado calculado
+        status: initialStatus, 
         client: clientData,
         clientId: user?.uid
       });
 
-// --- 3. ENVIAR EL CORREO CORRESPONDIENTE ---
+      // --- ENVIAR EL CORREO CORRESPONDIENTE ---
       const emailPayload = {
         to: clientData.email, 
         clientName: clientData.name || clientData.email.split('@')[0],
@@ -268,8 +264,6 @@ const handleFinalizeBooking = async () => {
         date: selectedDate, 
         time: selectedTime,
         serviceName: selectedService.name,
-        // FIJO: Si por algún error de red no llega el teléfono, ponemos uno de soporte para que la app no colapse,
-        // pero en el 99.9% de los casos tomará el selectedBarber.phone que guardaste en el panel.
         barberPhone: selectedBarber.phone || '+56937605937', 
         paymentMethod: selectedPaymentMethod 
       };
@@ -280,26 +274,34 @@ const handleFinalizeBooking = async () => {
         await sendPendingEmail(emailPayload);
       }
 
-      // --- NUEVO: DISPARAR NOTIFICACIÓN PUSH AL BARBERO ---
-      // Verificamos si el barbero activó las notificaciones y tiene su Token guardado
+      // --- DISPARAR NOTIFICACIÓN PUSH AL BARBERO ---
       if (selectedBarber.fcmToken && selectedBarber.notifications?.newBooking) {
         const clientFirstName = clientData.name?.split(' ')[0] || "Un cliente";
         const pushTitle = initialStatus === 'confirmed' ? '✅ Nueva Reserva Confirmada' : '⏳ Nueva Solicitud de Reserva';
         const pushBody = `${clientFirstName} agendó para el ${selectedDate} a las ${selectedTime}.`;
         
-        // Lo disparamos sin usar 'await' para que el cliente no tenga que esperar a que se envíe la notificación
         sendPushAlert(selectedBarber.fcmToken, pushTitle, pushBody)
           .catch(err => console.error("Error al enviar Push al barbero:", err));
       }
-      // --------------------------------------------------
 
       // 4. Avanzar al éxito
       setSuccessId(ticketId);
       setStep(6); 
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al guardar la reserva:", error);
-      alert("Hubo un error al procesar tu reserva. Intenta nuevamente.");
+      
+      // =========================================================
+      // ATRAPAMOS EL ERROR DE COLISIÓN DE ÚLTIMO SEGUNDO AQUÍ
+      // =========================================================
+      if (error.message === "HORA_OCUPADA") {
+        toast.error("¡Demasiado tarde! Alguien más concretó la reserva de esta hora mientras llenabas tus datos. Por favor, elige otra.");
+        setStep(3); // Lo devolvemos al calendario
+        setSelectedTime(null); // Le borramos la hora para que elija una nueva
+      } else {
+        alert("Hubo un error al procesar tu reserva. Intenta nuevamente.");
+      }
+      
     } finally {
       setIsSubmitting(false);
     }
