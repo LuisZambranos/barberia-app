@@ -6,10 +6,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { to, type, appointmentData } = req.body;
+  // Ahora permitimos que appointmentData sea opcional si es un recordatorio
+  const { to, type, appointmentData, clientName } = req.body;
 
-  if (!to || !type || !appointmentData) {
+  if (!to || !type) {
     return res.status(400).json({ message: 'Faltan datos requeridos' });
+  }
+  
+  // Candado estricto: Si NO es recordatorio, exigimos los datos de la cita
+  if (type !== 'reminder' && !appointmentData) {
+    return res.status(400).json({ message: 'Faltan datos de la cita' });
   }
 
   try {
@@ -35,14 +41,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .footer { text-align: center; padding: 20px; font-size: 0.8em; color: #888; }
     `;
 
-    const appointmentDetailsHTML = `
+    // --- BLOQUES REUTILIZABLES (Solo si existe appointmentData) ---
+    const appointmentDetailsHTML = appointmentData ? `
       <div class="box">
         <p><strong>Barbero:</strong> ${appointmentData.barberName}</p>
         <p><strong>Servicio:</strong> ${appointmentData.serviceName}</p>
         <p><strong>Fecha:</strong> ${appointmentData.date}</p>
         <p><strong>Hora:</strong> ${appointmentData.time}</p>
       </div>
-    `;
+    ` : '';
 
     const policyHTML = `
       <div class="policy-box">
@@ -54,25 +61,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
 
     // --- LÓGICA FIJA DE WHATSAPP ---
-    const phone = appointmentData.barberPhone; // Ya es obligatorio
-    let wsMessage = '';
-    
-    if (type === 'confirmed') {
-      wsMessage = `Hola ${appointmentData.barberName}, soy ${appointmentData.clientName}. ¡Ya tengo mi hora confirmada para el ${appointmentData.date} a las ${appointmentData.time}! Nos vemos.`;
-    } else if (type === 'pending') {
-       if (appointmentData.paymentMethod === 'transfer') {
-           wsMessage = `Hola ${appointmentData.barberName}, soy ${appointmentData.clientName}. Solicité una reserva para el ${appointmentData.date} a las ${appointmentData.time}. Te adjunto el comprobante de transferencia:`;
-       } else {
-           wsMessage = `Hola ${appointmentData.barberName}, soy ${appointmentData.clientName}. Solicité una reserva para el ${appointmentData.date} a las ${appointmentData.time} (pago en efectivo). Confírmame por favor.`;
-       }
-    } else if (type === 'canceled') {
-      wsMessage = `Hola ${appointmentData.barberName}, vi que mi cita del ${appointmentData.date} fue cancelada. ¿Podemos reagendar?`;
+    let wsButtonHTML = '';
+    if (type !== 'reminder' && appointmentData) {
+      const phone = appointmentData.barberPhone; 
+      let wsMessage = '';
+      
+      if (type === 'confirmed') {
+        wsMessage = `Hola ${appointmentData.barberName}, soy ${appointmentData.clientName}. ¡Ya tengo mi hora confirmada para el ${appointmentData.date} a las ${appointmentData.time}! Nos vemos.`;
+      } else if (type === 'pending') {
+         if (appointmentData.paymentMethod === 'transfer') {
+             wsMessage = `Hola ${appointmentData.barberName}, soy ${appointmentData.clientName}. Solicité una reserva para el ${appointmentData.date} a las ${appointmentData.time}. Te adjunto el comprobante de transferencia:`;
+         } else {
+             wsMessage = `Hola ${appointmentData.barberName}, soy ${appointmentData.clientName}. Solicité una reserva para el ${appointmentData.date} a las ${appointmentData.time} (pago en efectivo). Confírmame por favor.`;
+         }
+      } else if (type === 'canceled') {
+        wsMessage = `Hola ${appointmentData.barberName}, vi que mi cita del ${appointmentData.date} fue cancelada. ¿Podemos reagendar?`;
+      }
+
+      const wsLink = `https://wa.me/${phone}?text=${encodeURIComponent(wsMessage)}`;
+      wsButtonHTML = `<div style="text-align: center;"><a href="${wsLink}" class="btn btn-ws">Contactar por WhatsApp</a></div>`;
     }
 
-    const wsLink = `https://wa.me/${phone}?text=${encodeURIComponent(wsMessage)}`;
-    const wsButtonHTML = `<div style="text-align: center;"><a href="${wsLink}" class="btn btn-ws">Contactar por WhatsApp</a></div>`;
-
-    // --- ENRUTADOR ---
+    // --- ENRUTADOR DE PLANTILLAS ---
     switch (type) {
       case 'pending':
         subject = '⚠️ Tu cita está PENDIENTE - AJ Studio';
@@ -146,6 +156,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 <p>Para nosotros es muy importante seguir mejorando. ¿Qué tal te pareció la experiencia?</p>
                 <div style="text-align: center;">
                   <a href="https://g.page/r/tu-enlace-de-google/review" class="btn btn-gold">Calificar Servicio ⭐⭐⭐⭐⭐</a>
+                </div>
+              </div>
+              <div class="footer">AJ Studio - Barbería & Estilo</div>
+            </div>
+          </body></html>
+        `;
+        break;
+
+// --- NUEVO: RECORDATORIO DE 15 DÍAS ---
+      case 'reminder':
+        const resolvedName = clientName || 'Cliente';
+        subject = '💈 ¡Ya toca un retoque! ✂️';
+        htmlContent = `
+          <html><head><style>${baseStyles}</style></head><body>
+            <div class="container">
+              <div class="header"><h1 style="margin: 0; letter-spacing: 2px;">AJ <span class="gold-text">STUDIO</span></h1></div>
+              <div class="content">
+                <h2>Hola ${resolvedName},</h2>
+                <p>Notamos que han pasado un par de semanas desde tu última visita a nuestra barbería.</p>
+                <p>¿Ya es hora de un retoque? Mantén tu estilo impecable agendando una nueva cita con nosotros, los barberos te están esperando.</p>
+                <div style="text-align: center; margin-top: 25px;">
+                  <a href="https://ajstudio.vercel.app/book" class="btn btn-gold">Reservar Nueva Cita</a>
                 </div>
               </div>
               <div class="footer">AJ Studio - Barbería & Estilo</div>

@@ -24,6 +24,7 @@ interface BookingData {
 }
 
 export const createAppointment = async (data: BookingData): Promise<string> => {
+  // 1. GUARDIA DE ÚLTIMO SEGUNDO
   const q = query(
     collection(db, "appointments"), 
     where("barberId", "==", data.barber.id), 
@@ -42,6 +43,10 @@ export const createAppointment = async (data: BookingData): Promise<string> => {
 
   const dateKey = data.date; 
   const counterRef = doc(db, "dailyCounters", dateKey);
+  
+  // --- NUEVO: PREPARAMOS LA REFERENCIA PARA DESTRUIR EL CANDADO ---
+  const lockId = `${data.barber.id}_${data.date}_${data.time}`;
+  const lockRef = doc(db, "locks", lockId);
 
   try {
     const resultId = await runTransaction(db, async (transaction) => {
@@ -82,6 +87,11 @@ export const createAppointment = async (data: BookingData): Promise<string> => {
       };
 
       transaction.set(newAppointmentRef, appointmentPayload);
+      
+      // --- NUEVO: DESTRUIMOS EL CANDADO EN LA MISMA TRANSACCIÓN ---
+      // Como ya tenemos la cita oficial, el candado temporal es basura
+      transaction.delete(lockRef);
+
       return shortId;
     });
 

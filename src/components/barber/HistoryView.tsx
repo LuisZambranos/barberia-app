@@ -3,6 +3,7 @@ import { DollarSign, Search, Loader2, ChevronDown, ChevronUp, CalendarDays, Scis
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { type Appointment } from "../../models/Appointment"; 
+import { calculateMonthlyMetrics } from "../../utils/metrics.utils"; // <-- IMPORTACIÓN NUEVA
 
 // --- HELPERS UX ---
 const isPastDay = (dateString: string) => {
@@ -10,11 +11,6 @@ const isPastDay = (dateString: string) => {
   today.setHours(0, 0, 0, 0);
   const apptDate = new Date(`${dateString}T00:00:00`);
   return apptDate < today;
-};
-
-const getMonthYear = (dateString: string) => {
-    const d = new Date(`${dateString}T00:00:00`);
-    return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase();
 };
 
 const formatDate = (dateString: string) => {
@@ -31,6 +27,15 @@ const PaymentBadge = ({ method }: { method?: 'cash' | 'transfer' | 'online' }) =
     if (method === 'transfer') return <div className="flex w-fit items-center gap-1 text-[9px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-bold uppercase tracking-wider" title="Transferencia Bancaria"><Landmark size={10}/> Transf.</div>;
     if (method === 'online') return <div className="flex w-fit items-center gap-1 text-[9px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20 font-bold uppercase tracking-wider" title="Pago Online"><CreditCard size={10}/> Webpay</div>;
     return <div className="flex w-fit items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider" title="Pago en Efectivo"><Wallet size={10}/> Efectivo</div>;
+};
+
+// --- COMPONENTE VISUAL DE ESTADO ---
+const StatusBadge = ({ status }: { status: string }) => {
+    if (status === 'completed') return <span className="text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide bg-blue-500/20 text-blue-400">Realizada</span>;
+    if (status === 'cancelled' || status === 'canceled') return <span className="text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide bg-red-500/20 text-red-400">Cancelada</span>;
+    if (status === 'confirmed') return <span className="text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide bg-green-500/20 text-green-400">Confirmada</span>;
+    
+    return <span className="text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide bg-yellow-500/20 text-yellow-400">Pendiente</span>;
 };
 
 const HistoryView = ({ barberId }: { barberId: string }) => {
@@ -71,32 +76,8 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
     return (appt.clientName?.toLowerCase().includes(term) || appt.id.toLowerCase().includes(term) || appt.date.includes(term));
   });
 
-  const historyData = filteredAppointments.reduce((acc, appt) => {
-      const month = getMonthYear(appt.date);
-      
-      if (!acc[month]) {
-          acc[month] = { 
-              totalAppts: 0, 
-              totalRevenue: 0, 
-              revenueByMethod: { cash: 0, transfer: 0, online: 0 },
-              days: {} 
-          };
-      }
-      
-      acc[month].totalAppts += 1;
-      
-      const priceVal = parseInt(String(appt.price).replace(/[^0-9]/g, '')) || 0;
-      acc[month].totalRevenue += priceVal;
-      
-      const method = appt.paymentMethod || 'cash';
-      acc[month].revenueByMethod[method] += priceVal;
-      
-      if (!acc[month].days[appt.date]) acc[month].days[appt.date] = [];
-      acc[month].days[appt.date].push(appt);
-      
-      return acc;
-  }, {} as Record<string, { totalAppts: number, totalRevenue: number, revenueByMethod: Record<string, number>, days: Record<string, Appointment[]> }>);
-
+  // LLAMADA LIMPIA A LA FUNCIÓN DE MÉTRICAS
+  const historyData = calculateMonthlyMetrics(filteredAppointments);
 
   if (loading) return <div className="text-center py-20 text-gold flex justify-center"><Loader2 className="animate-spin"/> Cargando historial...</div>;
 
@@ -133,7 +114,7 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
                                 <div className="p-3 bg-white/5 rounded-lg text-gold"><CalendarDays size={24}/></div>
                                 <div>
                                     <h2 className="text-lg md:text-xl font-black text-white">{month}</h2>
-                                    <p className="text-xs text-txt-muted font-bold uppercase tracking-widest">{data.totalAppts} Citas Completadas</p>
+                                    <p className="text-xs text-txt-muted font-bold uppercase tracking-widest">{data.totalAppts} Citas Históricas</p>
                                 </div>
                             </div>
                             
@@ -181,30 +162,30 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {appts.map(appt => (
-                                                <div key={appt.id} className="bg-bg-card border border-white/5 p-4 rounded-lg flex flex-col justify-between opacity-80 hover:opacity-100 transition-opacity">
+                                            {appts.map(appt => {
+                                                const isCanceled = appt.status === 'cancelled' || (appt.status as string) === 'canceled';
+
+                                                return (
+                                                <div key={appt.id} className={`bg-bg-card border border-white/5 p-4 rounded-lg flex flex-col justify-between transition-opacity ${isCanceled ? 'opacity-50 grayscale' : 'opacity-90 hover:opacity-100'}`}>
                                                     
-                                                    {/* NUEVA Cabecera de Tarjeta: Estado al lado del nombre */}
                                                     <div className="flex justify-between items-start mb-4">
                                                         <div>
                                                             <div className="flex items-center gap-2 mb-1.5">
-                                                                <p className="text-sm font-bold text-white">{appt.clientName}</p>
-                                                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide ${appt.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                                                                    {appt.status === 'confirmed' ? 'Realizada' : appt.status}
-                                                                </span>
+                                                                <p className={`text-sm font-bold ${isCanceled ? 'line-through text-txt-muted' : 'text-white'}`}>{appt.clientName}</p>
+                                                                <StatusBadge status={appt.status} />
                                                             </div>
                                                             <p className="text-xs text-txt-muted flex items-center gap-1"><Scissors size={12} className="text-gold/50"/> {appt.serviceName}</p>
                                                         </div>
                                                         <span className="text-xs font-black text-gold bg-gold/10 px-2 py-1 rounded">{appt.time}</span>
                                                     </div>
                                                     
-                                                    {/* NUEVO Footer de Tarjeta: Método de pago a la izquierda, Precio a la derecha */}
                                                     <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-auto">
                                                         <PaymentBadge method={appt.paymentMethod} />
                                                         <span className="text-xs font-bold text-white flex items-center gap-1"><DollarSign size={12} className="text-gold"/>{appt.price}</span>
                                                     </div>
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 ))}

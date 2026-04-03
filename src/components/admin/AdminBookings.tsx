@@ -3,21 +3,10 @@ import { collection, getDocs, doc, updateDoc, query, onSnapshot } from 'firebase
 import { db } from '../../firebase/config';
 import { useToast } from '../../context/ToastContext';
 import { DollarSign, Search, Loader2, ChevronDown, ChevronUp, CalendarDays, Scissors, Landmark, CreditCard, Wallet } from "lucide-react";
+import { calculateMonthlyMetrics } from '../../utils/metrics.utils';
+import { type Appointment } from "../../models/Appointment"; 
 
 // --- INTERFACES ---
-interface Appointment {
-  id: string;
-  clientName: string;
-  date: string;
-  time: string;
-  service?: string;
-  serviceName?: string;
-  barberId: string;
-  status: string;
-  price?: string | number;
-  paymentMethod?: 'cash' | 'transfer' | 'online';
-}
-
 interface Barber {
   id: string;
   name: string;
@@ -29,11 +18,6 @@ const isPastDay = (dateString: string) => {
   today.setHours(0, 0, 0, 0);
   const apptDate = new Date(`${dateString}T00:00:00`);
   return apptDate < today;
-};
-
-const getMonthYear = (dateString: string) => {
-    const d = new Date(`${dateString}T00:00:00`);
-    return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase();
 };
 
 const formatDate = (dateString: string) => {
@@ -51,15 +35,11 @@ const PaymentBadge = ({ method }: { method?: 'cash' | 'transfer' | 'online' }) =
     return <div className="flex w-fit items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider" title="Pago en Efectivo"><Wallet size={10}/> Efectivo</div>;
 };
 
-// Función mágica para los 4 estados (COLORES CORREGIDOS)
 const getStatusDisplay = (appt: Appointment) => {
-    // Realizada -> AZUL
-    if (appt.status === 'completed') return { text: 'Realizada', colorClass: 'bg-blue-500/20 text-blue-400 border-blue-500/30' };
-    if (appt.status === 'cancelled') return { text: 'Cancelada', colorClass: 'bg-red-500/20 text-red-400 border-red-500/30' };
-    // Confirmada -> VERDE
-    if (appt.status === 'confirmed') return { text: 'Confirmada', colorClass: 'bg-green-500/20 text-green-400 border-green-500/30' };
+    if (appt.status === 'completed') return { text: 'Realizada', colorClass: 'bg-green-500/20 text-green-400 border-green-500/30' };
+    if (appt.status === 'cancelled' || (appt.status as string) === 'canceled') return { text: 'Cancelada', colorClass: 'bg-red-500/20 text-red-400 border-red-500/30' };
+    if (appt.status === 'confirmed') return { text: 'Confirmada', colorClass: 'bg-blue-500/20 text-blue-400 border-blue-500/30' };
     
-    // Si el estado es 'pending'
     if (appt.paymentMethod === 'transfer') {
         return { text: 'Pago Pendiente', colorClass: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 animate-pulse' };
     }
@@ -77,7 +57,6 @@ const AdminBookings = () => {
   const { showToast } = useToast();
 
   useEffect(() => {
-    // 1. Cargar Barberos
     const fetchBarbers = async () => {
       try {
         const barbersSnap = await getDocs(collection(db, 'barbers'));
@@ -88,7 +67,6 @@ const AdminBookings = () => {
     };
     fetchBarbers();
 
-    // 2. Escuchar TODAS las citas (Colección correcta: "appointments")
     const q = query(collection(db, 'appointments'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Appointment));
@@ -129,7 +107,7 @@ const AdminBookings = () => {
       );
   };
 
-  // --- LÓGICA DE SEPARACIÓN (Activas vs Historial) ---
+  // --- LÓGICA DE SEPARACIÓN ---
   const activeAppts = appointments.filter(a => !isPastDay(a.date));
   activeAppts.sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date);
@@ -147,35 +125,13 @@ const AdminBookings = () => {
     return (appt.clientName?.toLowerCase().includes(term) || appt.id.toLowerCase().includes(term) || appt.date.includes(term));
   });
 
-  const historyData = filteredPastAppts.reduce((acc, appt) => {
-      const month = getMonthYear(appt.date);
-      if (!acc[month]) {
-          acc[month] = { 
-              totalAppts: 0, 
-              totalRevenue: 0, 
-              revenueByMethod: { cash: 0, transfer: 0, online: 0 },
-              days: {} 
-          };
-      }
-      
-      acc[month].totalAppts += 1;
-      const priceVal = parseInt(String(appt.price).replace(/[^0-9]/g, '')) || 0;
-      acc[month].totalRevenue += priceVal;
-      const method = appt.paymentMethod || 'cash';
-      acc[month].revenueByMethod[method] += priceVal;
-      
-      if (!acc[month].days[appt.date]) acc[month].days[appt.date] = [];
-      acc[month].days[appt.date].push(appt);
-      
-      return acc;
-  }, {} as Record<string, { totalAppts: number, totalRevenue: number, revenueByMethod: Record<string, number>, days: Record<string, Appointment[]> }>);
+  const historyData = calculateMonthlyMetrics(filteredPastAppts);
 
   if (loading) return <div className="text-center py-20 text-gold flex justify-center"><Loader2 className="animate-spin mr-2"/> Cargando sistema global...</div>;
 
   return (
     <div className="w-full">
       
-      {/* NAVEGACIÓN INTERNA (Tabs) */}
       <div className="flex space-x-6 mb-8 border-b border-white/10 pb-2 overflow-x-auto hide-scrollbar">
         <button 
           onClick={() => setActiveTab('activas')}
@@ -191,9 +147,6 @@ const AdminBookings = () => {
         </button>
       </div>
 
-      {/* =========================================
-          VISTA 1: CITAS ACTIVAS (Con Reasignación)
-          ========================================= */}
       {activeTab === 'activas' && (
         <div className="animate-in fade-in duration-500">
           {activeAppts.length === 0 ? (
@@ -228,7 +181,7 @@ const AdminBookings = () => {
                       <div>
                         <p className="text-xs text-txt-muted uppercase tracking-wider mb-1">Servicio</p>
                         <p className="text-gray-300 text-sm flex items-center gap-1">
-                          <Scissors size={14} className="text-gold/50" /> {booking.serviceName || booking.service}
+                          <Scissors size={14} className="text-gold/50" /> {booking.serviceName}
                         </p>
                       </div>
 
@@ -244,7 +197,7 @@ const AdminBookings = () => {
                         className="w-full bg-bg-card border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gold transition-colors cursor-pointer appearance-none"
                         value=""
                         onChange={(e) => handleReassign(booking.id, e.target.value)}
-                        disabled={booking.status === 'cancelled' || booking.status === 'completed'}
+                        disabled={booking.status === 'cancelled' || (booking.status as string) === 'canceled' || booking.status === 'completed'}
                         style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23D4AF37%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7rem top 50%', backgroundSize: '.65rem auto' }}
                       >
                         <option value="" disabled>Seleccionar Barbero...</option>
@@ -266,9 +219,6 @@ const AdminBookings = () => {
         </div>
       )}
 
-      {/* =========================================
-          VISTA 2: HISTORIAL GLOBAL (FINANZAS)
-          ========================================= */}
       {activeTab === 'historial' && (
         <div className="space-y-8 animate-in fade-in duration-500">
           
@@ -352,20 +302,21 @@ const AdminBookings = () => {
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                                 {appts.map(appt => {
                                                   const statusDisplay = getStatusDisplay(appt);
+                                                  const isCanceled = appt.status === 'cancelled' || (appt.status as string) === 'canceled';
                                                   return (
-                                                    <div key={appt.id} className="bg-bg-card border border-white/5 p-4 rounded-lg flex flex-col justify-between opacity-80 hover:opacity-100 transition-opacity">
+                                                    <div key={appt.id} className={`bg-bg-card border border-white/5 p-4 rounded-lg flex flex-col justify-between transition-opacity ${isCanceled ? 'opacity-50 grayscale' : 'opacity-90 hover:opacity-100'}`}>
                                                         
                                                         <div className="flex justify-between items-start mb-4">
                                                             <div>
                                                                 <div className="flex items-center gap-2 mb-1.5">
-                                                                    <p className="text-sm font-bold text-white">{appt.clientName}</p>
+                                                                    <p className={`text-sm font-bold ${isCanceled ? 'line-through text-txt-muted' : 'text-white'}`}>{appt.clientName}</p>
                                                                     <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide border ${statusDisplay.colorClass}`}>
                                                                         {statusDisplay.text}
                                                                     </span>
                                                                 </div>
                                                                 <p className="text-xs text-txt-muted flex items-center gap-1">
                                                                   <Scissors size={12} className="text-gold/50"/> 
-                                                                  {appt.serviceName || appt.service} 
+                                                                  {appt.serviceName} 
                                                                   <span className="text-white/30 mx-1">•</span> 
                                                                   <span className="text-gold font-bold">{getBarberName(appt.barberId)}</span>
                                                                 </p>
@@ -378,7 +329,7 @@ const AdminBookings = () => {
                                                             <span className="text-xs font-bold text-white flex items-center gap-1"><DollarSign size={12} className="text-gold"/>{appt.price}</span>
                                                         </div>
                                                     </div>
-                                                )})}
+                                                  )})}
                                             </div>
                                         </div>
                                     ))}
