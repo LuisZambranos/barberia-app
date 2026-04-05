@@ -1,9 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { getMessaging } from "firebase/messaging";
+import { getMessaging, isSupported } from "firebase/messaging"; // <-- Agregar isSupported
 
-// Usamos import.meta.env para leer las variables de entorno en Vite
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -14,10 +13,17 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 
-// Inicializar servicios
 export const db = getFirestore(app);
 export const auth = getAuth(app);
-export const messaging = getMessaging(app);
+
+// Inicializar messaging como null por defecto
+export let messaging: any = null;
+
+// Solo inicializar si el navegador lo soporta (evita el crash en Instagram/iOS)
+isSupported().then((supported) => {
+  if (supported) {
+    messaging = getMessaging(app);
+  }
+}).catch((err) => console.log("Messaging no soportado:", err));

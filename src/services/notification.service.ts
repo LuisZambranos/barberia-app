@@ -4,25 +4,32 @@ import { db, messaging } from "../firebase/config";
 
 export const requestNotificationPermission = async (barberId: string) => {
   try {
-    // 1. Pedimos permiso al navegador
+    // 1. Validar si el navegador soporta notificaciones de forma nativa
+    if (!('Notification' in window)) {
+      console.log('Este navegador no soporta notificaciones push.');
+      return false;
+    }
+
+    // 2. Validar si Firebase Messaging se pudo inicializar
+    if (!messaging) {
+      console.log('Firebase Messaging no está disponible en este entorno.');
+      return false;
+    }
+
+    // 3. Pedir permiso al navegador
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
-      // 2. Obtenemos el Token usando tu llave VAPID
       const currentToken = await getToken(messaging, { 
         vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY 
       });
 
       if (currentToken) {
-        //console.log("Token obtenido:", currentToken);
-        
-        // 3. Guardamos el Token en el perfil del barbero en Firestore
         const barberRef = doc(db, "barbers", barberId);
         await updateDoc(barberRef, {
           fcmToken: currentToken
         });
-
-        return true; // Éxito
+        return true; 
       } else {
         console.log('No se pudo obtener el token.');
         return false;
@@ -37,8 +44,8 @@ export const requestNotificationPermission = async (barberId: string) => {
   }
 };
 
-// --- NUEVA FUNCIÓN PARA DISPARAR LA ALERTA DESDE EL FRONTEND ---
 export const sendPushAlert = async (token: string, title: string, body: string) => {
+// ... el resto de tu código queda igual
   if (!token) return false;
 
   try {
