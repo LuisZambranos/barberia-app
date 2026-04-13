@@ -1,11 +1,13 @@
 // api/sendPush.ts
-import * as admin from 'firebase-admin';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+// Importaciones MODULARES (A prueba de fallos en Vercel)
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 
 // Función para inicializar de forma segura
 const initFirebase = () => {
-  // Comprobamos si ya hay apps inicializadas
-  if (!admin.apps || admin.apps.length === 0) {
+  // getApps() es la forma moderna y segura de verificar las apps
+  if (getApps().length === 0) {
     try {
       const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
       
@@ -13,8 +15,8 @@ const initFirebase = () => {
         console.error("ALERTA: FIREBASE_PRIVATE_KEY no está definida en las variables de entorno.");
       }
 
-      admin.initializeApp({
-        credential: admin.credential.cert({
+      initializeApp({
+        credential: cert({
           projectId: process.env.FIREBASE_PROJECT_ID,
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
           privateKey: privateKey,
@@ -64,8 +66,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       token: token,
     };
 
-    // 3. ¡Disparamos el Push!
-    const response = await admin.messaging().send(message);
+    // 3. ¡Disparamos el Push usando la función modular!
+    const response = await getMessaging().send(message);
     
     console.log("Push enviado con éxito. MessageID:", response);
     return res.status(200).json({ success: true, messageId: response });
