@@ -1,49 +1,75 @@
-import admin from 'firebase-admin';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+// api/sendPush.ts
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import * as admin from 'firebase-admin';
 
-// 1. Inicializamos Firebase Admin (Solo si no se ha inicializado antes)
+// 1. Inicialización Híbrida y Segura
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      // Usamos un pequeño truco de replace() porque Vercel a veces rompe los saltos de línea de la llave privada
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
+  try {
+    // Si la llave privada viene con doble slash (\\n), la corregimos a un salto real (\n)
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+      }),
+    });
+    console.log("Firebase Admin inicializado correctamente para Push.");
+  } catch (error) {
+    console.error("Error crítico inicializando Firebase Admin:", error);
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Solo aceptamos peticiones POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+  // CORS para permitir peticiones desde tu app frontend
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
-  const { token, title, body } = req.body;
-
-  // Si el barbero no tiene token (no activó las notificaciones), no hacemos nada
-  if (!token) {
-    return res.status(400).json({ error: 'El barbero no tiene un token FCM registrado.' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // 2. Preparamos el mensaje Push
+    const { token, title, body, data } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token FCM es requerido' });
+    }
+
     const message = {
-      data: {
-        title: title,
-        body: body,
+      notification: {
+        title,
+        body,
       },
+      data: data || {}, // Payload extra opcional
       token: token,
     };
 
-    // 3. ¡Disparamos el misil!
+    // 2. Ejecutar el envío
     const response = await admin.messaging().send(message);
     
-    console.log('Notificación Push enviada con éxito:', response);
-    return res.status(200).json({ success: true, messageId: response });
+    return res.status(200).json({ 
+      success: true, 
+      messageId: response 
+    });
+
+  } catch (error: any) {
+    console.error('Error enviando push notification:', error);
     
-  } catch (error) {
-    console.error('Error crítico al enviar la notificación Push:', error);
-    return res.status(500).json({ success: false, error: 'Error interno de Firebase Admin' });
+    // Devolver un error detallado ayuda a depurar en Vercel Logs
+    return res.status(500).json({ 
+      error: 'Error interno al enviar la notificación',
+      details: error.message || 'Error desconocido'
+    });
   }
 }

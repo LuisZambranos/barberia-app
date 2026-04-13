@@ -1,6 +1,8 @@
 import { Zap, Clock } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa6'; // <-- Importamos el icono de WhatsApp
 
 interface AvailabilitySettingsProps {
+  phone: string;
   autoConfirm: boolean;
   autoConfirmCash: boolean;
   autoConfirmTransfer: boolean;
@@ -11,7 +13,7 @@ interface AvailabilitySettingsProps {
 
 const DAYS_MAP = [ { key: 'mon', label: 'L' }, { key: 'tue', label: 'M' }, { key: 'wed', label: 'M' }, { key: 'thu', label: 'J' }, { key: 'fri', label: 'V' }, { key: 'sat', label: 'S' }, { key: 'sun', label: 'D' } ];
 
-export const AvailabilitySettings = ({ autoConfirm, autoConfirmCash, autoConfirmTransfer, schedule, workDays, onUpdate }: AvailabilitySettingsProps) => {
+export const AvailabilitySettings = ({ phone, autoConfirm, autoConfirmCash, autoConfirmTransfer, schedule, workDays, onUpdate }: AvailabilitySettingsProps) => {  
   
   const Toggle = ({ active, onClick }: { active: boolean, onClick: () => void }) => (
     <button type="button" onClick={onClick} className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ${active ? 'bg-gold' : 'bg-white/10'}`}>
@@ -21,6 +23,25 @@ export const AvailabilitySettings = ({ autoConfirm, autoConfirmCash, autoConfirm
 
   return (
     <div className="space-y-8 mb-8">
+      
+      {/* 0. PERFIL DE CONTACTO (AQUÍ ESTÁ EL TELÉFONO) */}
+      <section className="bg-bg-card border border-white/5 rounded-xl p-6 shadow-lg">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-green-500/10 rounded-lg text-green-400"><FaWhatsapp size={20} /></div>
+          <div><h2 className="text-lg font-bold text-white">WhatsApp de Contacto</h2><p className="text-xs text-txt-muted">Número al que los clientes enviarán sus comprobantes.</p></div>
+        </div>
+        <div>
+          <label className="text-[10px] uppercase font-bold text-txt-muted block mb-2">Teléfono (con código de país, ej: +569...)</label>
+          <input 
+            type="tel" 
+            value={phone} 
+            onChange={(e) => onUpdate({ phone: e.target.value })} 
+            placeholder="+56 9 1234 5678" 
+            className="w-full bg-bg-main border border-white/10 rounded-lg p-3 text-white focus:border-gold outline-none text-sm transition-colors" 
+          />
+        </div>
+      </section>
+
       {/* RESERVAS AUTOMÁTICAS */}
       <section className="bg-bg-card border border-white/5 rounded-xl p-6 shadow-lg">
         <div className="flex items-center gap-3 mb-6">
