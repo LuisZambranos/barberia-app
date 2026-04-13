@@ -62,6 +62,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         title,
         body,
       },
+      // CONFIGURACIÓN DE APARIENCIA EN ANDROID/CHROME
+      android: {
+        notification: {
+          icon: 'https://ajstudio-dev.vercel.app/Logo-2.png', // <-- Tu logo oscuro (ideal para notificaciones)
+          color: '#D4AF37', // Tu color dorado
+        }
+      },
+      webpush: {
+        notification: {
+          icon: '/Logo-2.png',
+        }
+      },
       data: data || {},
       token: token,
     };
