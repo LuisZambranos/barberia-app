@@ -33,8 +33,8 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
     setTimeout(() => {
       setActiveToast({ message, type });
       
-      // Ahora sonará tanto para success como para error
-      if ((type === 'success' || type === 'error') && audioRef.current) {
+      // Ahora sonará tanto para success, error e info
+      if (audioRef.current) {
          audioRef.current.pause();      
          audioRef.current.currentTime = 0; 
          audioRef.current.play().then(() => {
@@ -66,27 +66,44 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
             relative overflow-hidden rounded-sm p-6 md:p-8
           `}>
             {/* Barra lateral de color */}
-            <div className={`absolute left-0 top-0 h-full w-1.5 md:w-2 ${activeToast.type === 'success' ? 'bg-gold' : 'bg-error'}`}></div>
+            <div className={`absolute left-0 top-0 h-full w-1.5 md:w-2 
+              ${activeToast.type === 'success' ? 'bg-gold' : 
+                activeToast.type === 'error' ? 'bg-error' : 'bg-blue-400'}`}>
+            </div>
+            
             {/* Icono */}
-            <div className={`p-3 md:p-4 rounded-full shrink-0 ${activeToast.type === 'success' ? 'bg-gold/10' : 'bg-red-500/10'}`}>
-              {activeToast.type === 'success' ? (
+            <div className={`p-3 md:p-4 rounded-full shrink-0 
+              ${activeToast.type === 'success' ? 'bg-gold/10' : 
+                activeToast.type === 'error' ? 'bg-red-500/10' : 'bg-blue-400/10'}`}>
+              
+              {activeToast.type === 'success' && (
                 <svg className="w-6 h-6 md:w-8 md:h-8 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
-              ) : (
+              )}
+              {activeToast.type === 'error' && (
                 <svg className="w-6 h-6 md:w-8 md:h-8 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
               )}
+              {activeToast.type === 'info' && (
+                 <svg className="w-6 h-6 md:w-8 md:h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              )}
             </div>
+
             {/* Textos */}
             <div className="flex-1">
-              <p className="text-[10px] md:text-[11px] text-gold uppercase font-black tracking-[0.4em] mb-1 opacity-80">Notificación</p>
+              <p className="text-[10px] md:text-[11px] text-gold uppercase font-black tracking-[0.4em] mb-1 opacity-80">
+                {activeToast.type === 'info' ? 'Información' : 'Notificación'}
+              </p>
               <h4 className="text-txt-main text-sm md:text-lg font-black tracking-tight leading-tight uppercase italic">{activeToast.message}</h4>
             </div>
+            
             <button onClick={() => setActiveToast(null)} className="text-txt-muted hover:text-txt-main transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
+            
             {/* Barra de progreso */}
             <div className={`
               absolute bottom-0 left-0 h-1 md:h-[5px] animate-progress-shrink 
-              ${activeToast.type === 'success' ? 'bg-gold' : 'bg-error'}
+              ${activeToast.type === 'success' ? 'bg-gold' : 
+                activeToast.type === 'error' ? 'bg-error' : 'bg-blue-400'}
             `}></div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./ui/context/AuthContext";
-import { BookingProvider } from "./ui/context/BookingContext"; // Importamos el nuevo cerebro
+import { BookingProvider } from "./ui/context/BookingContext";
 import ProtectedRoute from "./ui/components/ProtectedRoute";
 import Layout from "./ui/components/Layout";
 import Home from "./ui/pages/Home";
@@ -22,17 +22,17 @@ function App() {
               <Route path="/" element={<Home />}/>
               <Route path="login" element={<Login />}/>
               
-              {/* Rutas Protegidas (Cualquier logueado) */}
+              {/* Rutas Protegidas */}
               <Route element={<ProtectedRoute allowedRoles={['client', 'admin', 'barber']} />}>
                 <Route path="book" element={<Booking />}/>
               </Route>
 
-              {/* Rutas de Staff (Barberos y Admins) */}
+              {/* Rutas de Staff */}
               <Route element={<ProtectedRoute allowedRoles={['barber', 'admin']} />}>
                 <Route path="/barber" element={<BarberPage />} />
               </Route>
 
-              {/* Panel de Admins (Solo Admins pueden ver) */}
+              {/* Panel de Admins */}
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                 <Route path="/admin" element={<Admin />} />
               </Route>
@@ -42,6 +42,7 @@ function App() {
             {/* Ruta 404 global */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+
         </BrowserRouter>
       </BookingProvider>
     </AuthProvider>

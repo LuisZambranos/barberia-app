@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { type Barber } from "../models/Barber";
 
@@ -34,6 +34,18 @@ export const getBarberByEmail = async (email: string): Promise<Barber | null> =>
     return null;
   } catch (error) {
     console.error("Error buscando barbero por email:", error);
+    throw error;
+  }
+};
+
+// Actualiza el perfil de un barbero (Foto, nombre, especialidad, etc.)
+ 
+export const updateBarberProfile = async (barberId: string, data: Partial<Barber>): Promise<void> => {
+  try {
+    const barberRef = doc(db, "barbers", barberId);
+    await updateDoc(barberRef, data);
+  } catch (error) {
+    console.error("Error actualizando perfil del barbero:", error);
     throw error;
   }
 };

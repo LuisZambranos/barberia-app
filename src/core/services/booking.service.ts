@@ -211,3 +211,41 @@ export const releaseTemporalLock = async (barberId: string, date: string, time: 
     console.error("Error al liberar candado:", error);
   }
 };
+
+// --- FASE 3: BLOQUEOS MANUALES DEL BARBERO ---
+
+export const createManualBlock = async (barberId: string, date: string, time: string): Promise<boolean> => {
+  // Le añadimos el prefijo "manual_" para no chocar con las reservas temporales
+  const lockId = `manual_${barberId}_${date}_${time}`;
+  const lockRef = doc(db, "locks", lockId);
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      // Configuramos la expiración para dentro de 1 año (es un bloqueo persistente)
+      const oneYearFromNow = new Date().getTime() + (365 * 24 * 60 * 60 * 1000);
+      
+      transaction.set(lockRef, {
+        barberId,
+        date,
+        time,
+        type: 'manual', // Etiqueta clave
+        expiresAt: oneYearFromNow,
+        expireAtDate: new Date(oneYearFromNow)
+      });
+    });
+    return true;
+  } catch (error) {
+    console.error("Error creando bloqueo manual:", error);
+    return false;
+  }
+};
+
+export const removeManualBlock = async (barberId: string, date: string, time: string): Promise<void> => {
+  const lockId = `manual_${barberId}_${date}_${time}`;
+  const lockRef = doc(db, "locks", lockId);
+  try {
+    await deleteDoc(lockRef);
+  } catch (error) {
+    console.error("Error eliminando bloqueo manual:", error);
+  }
+};

@@ -1,7 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { getMessaging, isSupported } from "firebase/messaging"; // <-- Agregar isSupported
+import { getMessaging, isSupported } from "firebase/messaging"; 
+import { getStorage } from "firebase/storage"; // <-- 1. IMPORTAR STORAGE
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,11 +18,10 @@ const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export const storage = getStorage(app); // <-- 2. EXPORTAR STORAGE
 
-// Inicializar messaging como null por defecto
 export let messaging: any = null;
 
-// Solo inicializar si el navegador lo soporta (evita el crash en Instagram/iOS)
 isSupported().then((supported) => {
   if (supported) {
     messaging = getMessaging(app);

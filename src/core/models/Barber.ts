@@ -22,6 +22,7 @@ export interface Barber {
   role: string;
   specialty: string;
   phone?: string;
+  photoUrl?: string;
   image?: string;
 
   // Redes sociales

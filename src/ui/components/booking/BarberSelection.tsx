@@ -3,23 +3,6 @@ import { useBooking } from '../../context/BookingContext';
 import { type Barber } from '../../../core/models/Barber';
 import { getAllBarbers } from '../../../core/services/barber.service';
 
-// IMÁGENES
-import barbero1 from "../../assets/Simon_barber.webp";
-import barbero2 from "../../assets/Alvaro_barber.webp";
-import barbero3 from "../../assets/Reynold_barber.webp";
-import barbero4 from "../../assets/Javier_barber.webp";
-import barbero5 from "../../assets/Alejandro_barber.webp";
-import barbero6 from "../../assets/Jose_barbero.webp";
-
-const BARBER_PHOTOS: Record<string, string> = {
-  "jZQTIPBBwrTNYGTdL7QBIkjBJ913": barbero1,
-  "YsWJfoPcBaRN7hG5KWgCbs6XQc92": barbero2, 
-  "rp2dNmur2GZFBNllPu2dH1u4KYz1": barbero3,
-  "58tCb3NW5uSjrHHnPOmzS3tTxII2": barbero4,
-  "Tzjnvhso43ffT3x0T8rlWVEs3XG3": barbero5,
-  "SfCyyndvi4da8SXT6BgXwUHgZ6A3": barbero6,
-};
-
 // Dejamos la función de mezclar aquí porque es lógica de visualización (UI)
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
@@ -62,29 +45,35 @@ export const BarberSelection = () => {
   return (
     <div className="w-full animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {barbers.map(b => (
-          <div 
-            key={b.id} 
-            onClick={() => setSelectedBarber(b)} 
-            className={`p-4 border rounded-sm cursor-pointer transition-all duration-300 text-center flex flex-col items-center h-full justify-between hover:-translate-y-1 ${selectedBarber?.id === b.id ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(212,175,55,0.3)] ring-1 ring-gold' : 'border-white/10 bg-white/2 hover:border-gold/50 hover:bg-white/5'}`}
-          >
-            <div className="mb-4 w-full aspect-square max-w-[120px] bg-bg-main border border-white/10 rounded-2xl mx-auto overflow-hidden shadow-lg">
-              <img 
-                src={BARBER_PHOTOS[b.id] || "https://via.placeholder.com/150"} 
-                alt={b.name} 
-                className="w-full h-full object-cover object-top transition-transform duration-500 hover:scale-110" 
-                style={{ imageRendering: '-webkit-optimize-contrast' }} 
-              />
-            </div>
+        {barbers.map(b => {
+          // Generamos un avatar por defecto elegante si el barbero aún no sube su foto
+          const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(b.name)}&background=1e293b&color=D4AF37&size=300`;
+          
+          return (
+            <div 
+              key={b.id} 
+              onClick={() => setSelectedBarber(b)} 
+              className={`p-4 border rounded-sm cursor-pointer transition-all duration-300 text-center flex flex-col items-center h-full justify-between hover:-translate-y-1 ${selectedBarber?.id === b.id ? 'border-gold bg-gold/5 shadow-[0_0_20px_rgba(212,175,55,0.3)] ring-1 ring-gold' : 'border-white/10 bg-white/2 hover:border-gold/50 hover:bg-white/5'}`}
+            >
+              <div className="mb-4 w-full aspect-square max-w-[120px] bg-bg-main border border-white/10 rounded-2xl mx-auto overflow-hidden shadow-lg">
+                <img 
+                  // AQUÍ ESTÁ LA MAGIA: Lee de ImgBB, si no hay usa la antigua, si no usa el Fallback
+                  src={b.photoUrl || b.image || fallbackAvatar} 
+                  alt={b.name} 
+                  className="w-full h-full object-cover object-top transition-transform duration-500 hover:scale-110" 
+                  style={{ imageRendering: '-webkit-optimize-contrast' }} 
+                />
+              </div>
 
-            <div>
-              <h3 className="font-bold text-sm md:text-lg mb-1 text-txt-main uppercase tracking-tight leading-tight">{b.name.replace("PRUEBA", "")}</h3>
-              <p className="text-[10px] text-gold font-bold uppercase tracking-widest mb-2 truncate px-1">{b.role}</p>
-              <p className="text-txt-muted text-[10px] leading-tight hidden sm:block">{b.specialty}</p>
+              <div>
+                <h3 className="font-bold text-sm md:text-lg mb-1 text-txt-main uppercase tracking-tight leading-tight">{b.name.replace("PRUEBA", "")}</h3>
+                <p className="text-[10px] text-gold font-bold uppercase tracking-widest mb-2 truncate px-1">{b.role}</p>
+                <p className="text-txt-muted text-[10px] leading-tight hidden sm:block">{b.specialty}</p>
+              </div>
+              {selectedBarber?.id === b.id && (<div className="mt-3 w-3 h-3 bg-gold rounded-full animate-bounce"></div>)}
             </div>
-            {selectedBarber?.id === b.id && (<div className="mt-3 w-3 h-3 bg-gold rounded-full animate-bounce"></div>)}
-          </div>
-        ))}
+          );
+        })}
       </div>
       
       <div className="flex flex-col sm:flex-row gap-4 border-t border-white/10 mt-6 pt-6 max-w-4xl mx-auto">
