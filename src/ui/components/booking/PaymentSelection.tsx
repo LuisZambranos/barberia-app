@@ -6,7 +6,7 @@ import { copyToClipboard } from '../../../core/utils/clipboard';
 import { sendPendingEmail, sendConfirmationEmail } from '../../../core/services/email.service';
 import { sendPushAlert } from '../../../core/services/notification.service';
 import { useToast } from '../../context/ToastContext';
-import { createAppointment, releaseTemporalLock } from '../../../core/services/booking.service';
+import { createAppointment } from '../../../core/services/booking.service';
 
 export const PaymentSelection = () => {
   const { toast } = useToast();
