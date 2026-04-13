@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { CalendarDays, Settings, Loader2, Archive } from "lucide-react"; // <--- Importamos Archive
 import { useAuth } from "../context/AuthContext"; 
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "../firebase/config";
+import { db } from "../../core/firebase/config";
 
 import AppointmentsView from "../components/barber/AppointmentsView";
 import ConfigView from "../components/barber/ConfigView";

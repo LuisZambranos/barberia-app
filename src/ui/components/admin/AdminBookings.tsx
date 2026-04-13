@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, doc, updateDoc, query, onSnapshot } from 'firebase/firestore';
-import { db } from '../../firebase/config';
+import { db } from '../../../core/firebase/config';
 import { useToast } from '../../context/ToastContext';
 import { DollarSign, Search, Loader2, ChevronDown, ChevronUp, CalendarDays, Scissors, Landmark, CreditCard, Wallet } from "lucide-react";
-import { calculateMonthlyMetrics } from '../../utils/metrics.utils';
-import { type Appointment } from "../../models/Appointment"; 
+import { calculateMonthlyMetrics } from '../../../core/utils/metrics.utils';
+import { type Appointment } from "../../../core/models/Appointment"; 
 
 // --- INTERFACES ---
 interface Barber {

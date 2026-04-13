@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "../firebase/config";
+import { db } from "../../core/firebase/config";
 
 const DEFAULT_START = 10;
 const DEFAULT_END = 20;

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Save, Bell, DollarSign, Clock, Zap, Loader2, Landmark, MessageCircle, Smartphone } from "lucide-react"; // <-- NUEVO: Icono MessageCircle
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { db } from "../../firebase/config";
+import { db } from "../../../core/firebase/config";
 import { useToast } from "../../context/ToastContext";
-import { requestNotificationPermission } from "../../services/notification.service";
+import { requestNotificationPermission } from "../../../core/services/notification.service";
 
 interface ConfigViewProps {
   barberId: string;

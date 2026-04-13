@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { DollarSign, Search, Loader2, ChevronDown, ChevronUp, CalendarDays, Scissors, Landmark, CreditCard, Wallet } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { db } from "../../firebase/config";
-import { type Appointment } from "../../models/Appointment"; 
-import { calculateMonthlyMetrics } from "../../utils/metrics.utils"; // <-- IMPORTACIÓN NUEVA
+import { db } from "../../../core/firebase/config";
+import { type Appointment } from "../../../core/models/Appointment"; 
+import { calculateMonthlyMetrics } from "../../../core/utils/metrics.utils"; // <-- IMPORTACIÓN NUEVA
 
 // --- HELPERS UX ---
 const isPastDay = (dateString: string) => {

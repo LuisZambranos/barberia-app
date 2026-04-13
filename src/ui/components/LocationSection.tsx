@@ -1,4 +1,4 @@
-import { copyToClipboard } from '../utils/clipboard';
+import { copyToClipboard } from '../../core/utils/clipboard';
 import { useToast } from '../context/ToastContext';
 import ScheduleWidget from './ScheduleWidget';
 

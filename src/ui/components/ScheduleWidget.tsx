@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { db } from '../../core/firebase/config';
 
 const defaultSchedule = [
   { day: 'Lunes', open: '10:00', close: '20:00', isClosed: false },

@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { Clock, DollarSign, Phone, MessageCircle, Scissors, Search, Loader2, Mail, Copy, Calendar, Landmark, CreditCard, Wallet, CheckCircle2, PlusCircle, ChevronDown } from "lucide-react"; 
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { db } from "../../firebase/config";
-import { type Appointment } from "../../models/Appointment"; 
-import { sendConfirmationMessage } from "../../utils/whatsapp";
-import { copyToClipboard } from "../../utils/clipboard";
-import { updateAppointmentStatus } from "../../services/booking.service"; 
+import { db } from "../../../core/firebase/config";
+import { type Appointment } from "../../../core/models/Appointment"; 
+import { sendConfirmationMessage } from "../../../core/utils/whatsapp";
+import { copyToClipboard } from "../../../core/utils/clipboard";
+import { updateAppointmentStatus } from "../../../core/services/booking.service"; 
 
 const isToday = (dateString: string) => {
   const today = new Date();

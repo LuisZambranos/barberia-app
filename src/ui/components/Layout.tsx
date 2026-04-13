@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "./NavBar";
 import NotificationController from "./NotificationController";
+import Footer from "./Footer";
 
 const Layout = () => {
     return (
@@ -15,9 +16,7 @@ const Layout = () => {
             </main>
 
             {/* Footer */}
-            <footer className="bg-bg-main text-txt-muted text-center p-4 text-sm border-t border-white/10">
-                © 2025 Excalix Code. All rights reserved.
-            </footer>
+            <Footer />
         </div>
     )
 }

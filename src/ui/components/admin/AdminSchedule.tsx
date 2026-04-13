@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase/config';
+import { db } from '../../../core/firebase/config';
 import { useToast } from '../../context/ToastContext';
 
 interface DaySchedule {

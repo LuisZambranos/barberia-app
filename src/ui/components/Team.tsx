@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { type Barber } from "../models/Barber";
-import { Instagram, MessageCircle } from "lucide-react"; // <--- Importamos los iconos
+import { type Barber } from "../../core/models/Barber";
+import { FaInstagram, FaWhatsapp } from 'react-icons/fa6';
 
 // IMÁGENES LOCALES
 import barbero1 from "../assets/Simon_barber.webp"; 
@@ -143,7 +143,7 @@ const Team = () => {
                         className="w-8 h-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-txt-muted hover:bg-linear-to-tr hover:from-amber-500 hover:to-pink-500 hover:text-white hover:border-transparent transition-all duration-300"
                         title="Ver Instagram"
                       >
-                        <Instagram size={14} />
+                        <FaInstagram size={14} />
                       </a>
                     )}
                     {barber.whatsapp && (
@@ -154,7 +154,7 @@ const Team = () => {
                         className="w-8 h-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-txt-muted hover:bg-green-500 hover:text-white hover:border-green-500 transition-all duration-300"
                         title="Contactar por WhatsApp"
                       >
-                        <MessageCircle size={14} />
+                        <FaWhatsapp size={14} />
                       </a>
                     )}
                   </div>

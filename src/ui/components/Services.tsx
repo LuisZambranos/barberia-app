@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { type Service } from '../models/Service';
+import { type Service } from '../../core/models/Service';
 
 //  IMÁGENES 
 import clasico from '../assets/clasico.jpg';
