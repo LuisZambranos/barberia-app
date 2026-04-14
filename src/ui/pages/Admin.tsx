@@ -50,8 +50,8 @@ const Admin = () => {
         </button>
       </div>
 
-      <div className="bg-bg-card border border-white/10 p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-[100vw] overflow-hidden">
-        {/* 4. RENDERIZADO CONDICIONAL */}
+      {/* 4. RENDERIZADO CONDICIONAL (Fondo corregido para contraste) */}
+      <div className="w-full max-w-[100vw] overflow-hidden pt-4">
         {activeTab === 'bookings' && <AdminBookings />}
         {activeTab === 'schedule' && <AdminSchedule />}
         {activeTab === 'barbers' && <AdminBarbers />} 

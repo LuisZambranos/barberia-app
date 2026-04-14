@@ -273,14 +273,14 @@ export const removeManualBlock = async (barberId: string, date: string, time: st
 
 export const updateAppointmentData = async (
   appointmentId: string,
-  barberId: string,
+  barberId: string, // Ahora recibe el NUEVO barberId
   newDate: string,
   newTime: string,
   newPaymentMethod: PaymentMethodType,
-  newService?: Service // <-- NUEVO: Recibe el servicio opcionalmente
+  newService?: Service,
+  newBarberName?: string // NUEVO: Recibe el nombre del nuevo barbero
 ): Promise<void> => {
   try {
-    // 1. Verificamos si la nueva hora está ocupada (excluyendo la cita actual)
     const q = query(
       collection(db, "appointments"),
       where("barberId", "==", barberId),
@@ -295,18 +295,18 @@ export const updateAppointmentData = async (
                appt.status !== "canceled";
     });
 
-    if (isOccupied) {
-        throw new Error("HORA_OCUPADA");
-    }
+    if (isOccupied) throw new Error("HORA_OCUPADA");
 
-    // 2. Preparamos los datos a actualizar
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updatePayload: any = {
+      barberId, // Siempre actualiza el ID por si hubo reasignación
       date: newDate,
       time: newTime,
       paymentMethod: newPaymentMethod
     };
 
-    // Si enviaron un nuevo servicio, actualizamos el nombre y el precio
+    if (newBarberName) updatePayload.barberName = newBarberName;
+
     if (newService) {
         updatePayload.serviceId = newService.id;
         updatePayload.serviceName = newService.name;

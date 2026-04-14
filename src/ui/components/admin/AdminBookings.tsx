@@ -1,347 +1,349 @@
-import { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, query, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../core/firebase/config';
-import { useToast } from '../../context/ToastContext';
-import { DollarSign, Search, Loader2, ChevronDown, ChevronUp, CalendarDays, Scissors, Landmark, CreditCard, Wallet } from "lucide-react";
-import { calculateMonthlyMetrics } from '../../../core/utils/metrics.utils';
-import { type Appointment } from "../../../core/models/Appointment"; 
+import { useState } from "react";
+import { Loader2, Calendar, PlusCircle, X, User } from "lucide-react"; 
+import { type Appointment, type PaymentMethodType } from "../../../core/models/Appointment"; 
+import { copyToClipboard } from "../../../core/utils/clipboard";
+import { getLocalDateString, isTodayLocal, isPastLocal, formatDateLocal } from "../../../core/utils/date.utils";
+import { EditAppointmentModal } from "../shared/EditAppointmentModal";
+import { DeleteAppointmentModal } from "../shared/DeleteAppointmentModal";
+import { ConfirmModal } from "../shared/ConfirmModal";
+import { SearchBar } from "../shared/SearchBar";
+import { useSearch } from "../../hooks/useSearch";
+import { SearchResultsDisplay } from "../shared/SearchResultsDisplay";
+import { useAdminAppointments } from "../../hooks/useAdminAppointments";
+import { AdminAppointmentCard } from "./AdminAppointmentCard";
+import { AdminHistoryView } from "./AdminHistoryView";
 
-// --- INTERFACES ---
-interface Barber {
-  id: string;
-  name: string;
-}
-
-// --- HELPERS UX Y ESTADOS VISUALES UNIFICADOS ---
-const isPastDay = (dateString: string) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const apptDate = new Date(`${dateString}T00:00:00`);
-  return apptDate < today;
-};
-
-const formatDate = (dateString: string) => {
-    const d = new Date(`${dateString}T00:00:00`);
-    return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' }).toUpperCase();
-};
-
-const formatMoney = (amount: number) => {
-    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(amount);
-};
-
-const PaymentBadge = ({ method }: { method?: 'cash' | 'transfer' | 'online' }) => {
-    if (method === 'transfer') return <div className="flex w-fit items-center gap-1 text-[9px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-bold uppercase tracking-wider" title="Transferencia Bancaria"><Landmark size={10}/> Transf.</div>;
-    if (method === 'online') return <div className="flex w-fit items-center gap-1 text-[9px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20 font-bold uppercase tracking-wider" title="Pago Online"><CreditCard size={10}/> Webpay</div>;
-    return <div className="flex w-fit items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider" title="Pago en Efectivo"><Wallet size={10}/> Efectivo</div>;
-};
-
-const getStatusDisplay = (appt: Appointment) => {
-    if (appt.status === 'completed') return { text: 'Realizada', colorClass: 'bg-green-500/20 text-green-400 border-green-500/30' };
-    if (appt.status === 'cancelled' || (appt.status as string) === 'canceled') return { text: 'Cancelada', colorClass: 'bg-red-500/20 text-red-400 border-red-500/30' };
-    if (appt.status === 'confirmed') return { text: 'Confirmada', colorClass: 'bg-blue-500/20 text-blue-400 border-blue-500/30' };
-    
-    if (appt.paymentMethod === 'transfer') {
-        return { text: 'Pago Pendiente', colorClass: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 animate-pulse' };
-    }
-    return { text: 'Por Confirmar', colorClass: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' };
-};
-
-// --- COMPONENTE PRINCIPAL ---
 const AdminBookings = () => {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [barbers, setBarbers] = useState<Barber[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'activas' | 'historial'>('activas');
-  const [searchTerm, setSearchTerm] = useState("");
-  const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
-  const { showToast } = useToast();
+  const { appointments, services, barbers, loading, changeStatus, updateData, removeAppointment, addWalkIn } = useAdminAppointments();
 
-  useEffect(() => {
-    const fetchBarbers = async () => {
-      try {
-        const barbersSnap = await getDocs(collection(db, 'barbers'));
-        setBarbers(barbersSnap.docs.map(d => ({ id: d.id, ...d.data() } as Barber)));
-      } catch (error) {
-        console.error("Error al cargar barberos:", error);
-      }
-    };
-    fetchBarbers();
+  const [viewMode, setViewMode] = useState<'active' | 'history'>('active');
 
-    const q = query(collection(db, 'appointments'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Appointment));
-      setAppointments(data);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error escuchando citas:", error);
-      showToast("Error al cargar las citas", "error");
-      setLoading(false);
-    });
+  const { searchTerm, setSearchTerm, filteredItems: filteredAppointments, isSearching } = useSearch<Appointment>(
+      appointments, 
+      ['clientName', 'id', 'date', 'time', 'barberName'] 
+  );
 
-    return () => unsubscribe();
-  }, [showToast]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null); 
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
-  const handleReassign = async (bookingId: string, newBarberId: string) => {
-    if (!newBarberId) return;
-    const confirm = window.confirm("¿Estás seguro de reasignar esta cita a otro barbero?");
-    if (!confirm) return;
+  const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
+  const [deletingAppt, setDeletingAppt] = useState<Appointment | null>(null);
+  const [cancellingAppt, setCancellingAppt] = useState<Appointment | null>(null);
 
+  const [walkInModalOpen, setWalkInModalOpen] = useState(false);
+  const [isSubmittingWalkIn, setIsSubmittingWalkIn] = useState(false);
+  const [walkInForm, setWalkInForm] = useState({
+      clientName: '',
+      serviceId: '',
+      barberId: '', 
+      date: getLocalDateString(),
+      time: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+      paymentMethod: 'cash' as PaymentMethodType,
+      blockSchedule: false
+  });
+
+  const handleStatusChange = async (appointmentId: string, newStatus: 'pending' | 'confirmed' | 'cancelled' | 'completed') => {
+    setUpdatingId(appointmentId);
     try {
-      const bookingRef = doc(db, 'appointments', bookingId);
-      await updateDoc(bookingRef, { barberId: newBarberId });
-      showToast("Cita reasignada correctamente", "success");
+        await changeStatus(appointmentId, newStatus);
     } catch (error) {
-      console.error("Error al reasignar:", error);
-      showToast("Hubo un error al reasignar", "error");
+        alert("Hubo un error al actualizar la cita.");
+    } finally {
+        setUpdatingId(null);
+        setOpenDropdownId(null);
     }
   };
 
-  const getBarberName = (id: string) => {
-    const barber = barbers.find(b => b.id === id);
-    return barber ? barber.name : 'Desconocido';
+  const handleEditSave = async (id: string, newDate: string, newTime: string, newPayment: PaymentMethodType, newService?: any, newBarberId?: string) => {
+      const appt = appointments.find(a => a.id === id);
+      if (!appt) return;
+
+      const targetBarberId = newBarberId || appt.barberId;
+      const targetBarberName = newBarberId ? barbers.find(b => b.id === newBarberId)?.name : undefined;
+
+      setUpdatingId(id);
+      try {
+          await updateData(id, targetBarberId, newDate, newTime, newPayment, newService, targetBarberName);
+          setEditingAppt(null);
+      } catch (error: any) {
+          if (error.message === "HORA_OCUPADA") alert("Ese horario ya está ocupado.");
+          else alert("Error al actualizar la cita.");
+      } finally {
+          setUpdatingId(null);
+      }
   };
 
-  const toggleMonth = (month: string) => {
-      setExpandedMonths(prev => 
-          prev.includes(month) ? prev.filter(m => m !== month) : [...prev, month]
-      );
+  const handleDeleteConfirm = async (id: string) => {
+      setUpdatingId(id);
+      try {
+          await removeAppointment(id);
+          setDeletingAppt(null);
+      } catch (error) {
+          alert("Error al eliminar la cita.");
+      } finally {
+          setUpdatingId(null);
+      }
   };
 
-  // --- LÓGICA DE SEPARACIÓN ---
-  const activeAppts = appointments.filter(a => !isPastDay(a.date));
-  activeAppts.sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
-    return a.time.localeCompare(b.time);
-  });
+  const submitWalkIn = async () => {
+      const selectedServiceId = walkInForm.serviceId || (services.length > 0 ? services[0].id : '');
+      const selectedService = services.find(s => s.id === selectedServiceId);
 
-  const pastAppts = appointments.filter(a => isPastDay(a.date));
-  pastAppts.sort((a, b) => {
-    if (a.date !== b.date) return b.date.localeCompare(a.date);
-    return b.time.localeCompare(a.time);
-  });
+      if (!walkInForm.clientName || !selectedService || !walkInForm.barberId) {
+          return alert("Nombre, profesional y servicio son obligatorios.");
+      }
+      
+      setIsSubmittingWalkIn(true);
+      try {
+          await addWalkIn({
+              clientName: walkInForm.clientName,
+              date: walkInForm.date,
+              time: walkInForm.time,
+              serviceId: selectedService.id,
+              serviceName: selectedService.name,
+              price: selectedService.price,
+              barberId: walkInForm.barberId, 
+              paymentMethod: walkInForm.paymentMethod,
+              blockSchedule: walkInForm.blockSchedule
+          });
+          setWalkInModalOpen(false);
+          setWalkInForm({ ...walkInForm, clientName: '', serviceId: '', barberId: '' }); 
+      } catch (error) {
+          alert("Error al registrar la cita rápida.");
+      } finally {
+          setIsSubmittingWalkIn(false);
+      }
+  };
 
-  const filteredPastAppts = pastAppts.filter(appt => {
-    const term = searchTerm.toLowerCase();
-    return (appt.clientName?.toLowerCase().includes(term) || appt.id.toLowerCase().includes(term) || appt.date.includes(term));
-  });
+  const handleCopyEmail = (email: string, id: string) => {
+    if (copyToClipboard(email)) {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000); 
+    }
+  };
 
-  const historyData = calculateMonthlyMetrics(filteredPastAppts);
+  // --- SEPARACIÓN DE DATOS (AGENDA VS HISTORIAL) ---
+  const activeAppts = filteredAppointments.filter(a => a.status !== 'completed' && a.status !== 'cancelled' && !isPastLocal(a.date, a.time));
+  const pastAppts = appointments.filter(a => (isPastLocal(a.date, a.time) && !isTodayLocal(a.date)) || a.status === 'completed' || a.status === 'cancelled');
 
-  if (loading) return <div className="text-center py-20 text-gold flex justify-center"><Loader2 className="animate-spin mr-2"/> Cargando sistema global...</div>;
+  const todayPending = activeAppts.filter(a => isTodayLocal(a.date));
+  const futureAppts = activeAppts.filter(a => !isTodayLocal(a.date));
+
+  const groupedFuture = futureAppts.reduce((acc, appt) => {
+      if (!acc[appt.date]) acc[appt.date] = [];
+      acc[appt.date].push(appt);
+      return acc;
+  }, {} as Record<string, Appointment[]>);
+
+  const sortedFutureDates = Object.keys(groupedFuture).sort((a, b) => a.localeCompare(b));
+
+  const cardActions = {
+      onEdit: setEditingAppt,
+      onDelete: setDeletingAppt,
+      onCancel: (appt: Appointment) => { setCancellingAppt(appt); setOpenDropdownId(null); },
+      onStatusChange: handleStatusChange,
+      onCopyEmail: handleCopyEmail,
+      onToggleDropdown: setOpenDropdownId
+  };
+
+  if (loading) return <div className="text-center py-20 text-gold flex justify-center"><Loader2 className="animate-spin"/> Cargando base de datos...</div>;
 
   return (
-    <div className="w-full">
+    <div className="space-y-6 animate-in fade-in duration-500 relative">
       
-      <div className="flex space-x-6 mb-8 border-b border-white/10 pb-2 overflow-x-auto hide-scrollbar">
-        <button 
-          onClick={() => setActiveTab('activas')}
-          className={`font-bold uppercase tracking-wider text-sm transition-all pb-2 whitespace-nowrap ${activeTab === 'activas' ? 'text-gold border-b-2 border-gold' : 'text-txt-muted hover:text-white'}`}
-        >
-          Citas Activas ({activeAppts.length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('historial')}
-          className={`font-bold uppercase tracking-wider text-sm transition-all pb-2 whitespace-nowrap ${activeTab === 'historial' ? 'text-gold border-b-2 border-gold' : 'text-txt-muted hover:text-white'}`}
-        >
-          Historial Global
-        </button>
+      {/* HEADER Y PESTAÑAS */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div className="flex items-center gap-3">
+            <Calendar className="text-gold" size={28} />
+            <div>
+                <h2 className="text-xl font-black text-white uppercase tracking-tight">Gestión Maestra</h2>
+                <p className="text-txt-muted text-xs font-bold uppercase tracking-widest">Control Global de Citas</p>
+            </div>
+        </div>
+        
+        <div className="flex bg-black/20 border border-white/10 rounded-lg p-1 w-full sm:w-auto">
+            <button 
+                onClick={() => setViewMode('active')}
+                className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all ${viewMode === 'active' ? 'bg-gold text-bg-main shadow-md' : 'text-txt-muted hover:text-white'}`}
+            >
+                Activas
+            </button>
+            <button 
+                onClick={() => setViewMode('history')}
+                className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all ${viewMode === 'history' ? 'bg-white/10 text-white shadow-md border border-white/5' : 'text-txt-muted hover:text-white'}`}
+            >
+                Historial Finanzas
+            </button>
+        </div>
       </div>
 
-      {activeTab === 'activas' && (
-        <div className="animate-in fade-in duration-500">
-          {activeAppts.length === 0 ? (
-            <div className="text-center py-20 bg-bg-card rounded-xl border border-white/5 border-dashed">
-              <p className="text-txt-muted text-lg font-bold">No hay citas activas ni futuras registradas.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeAppts.map(booking => {
-                const statusDisplay = getStatusDisplay(booking);
-                return (
-                  <div key={booking.id} className="bg-bg-main border border-white/10 rounded-xl p-5 shadow-lg flex flex-col hover:border-gold/30 transition-colors relative group">
-                    
-                    <div className="flex justify-between items-start mb-4 border-b border-white/10 pb-3">
-                      <div className="flex flex-col">
-                        <span className="text-gold font-bold text-lg">{booking.date}</span>
-                        <span className="text-txt-main text-sm flex items-center gap-1">
-                          🕒 {booking.time}
-                        </span>
-                      </div>
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${statusDisplay.colorClass}`}>
-                        {statusDisplay.text}
-                      </span>
-                    </div>
+      {viewMode === 'active' ? (
+          <>
+            <SearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Buscar por cliente, profesional o fecha..." />
 
-                    <div className="grow space-y-3">
+            {filteredAppointments.length === 0 ? (
+                <div className="text-center py-20 opacity-50 bg-bg-card rounded-xl border border-white/5 border-dashed"><p className="text-txt-main font-bold">No hay reservas activas</p></div>
+            ) : isSearching ? (
+                <SearchResultsDisplay 
+                    appointments={filteredAppointments} 
+                    searchTerm={searchTerm} 
+                    showBarber={true} 
+                    // LE PASAMOS LOS BARBEROS A LA TARJETA
+                    renderCard={(appt) => <AdminAppointmentCard appt={appt} barbers={barbers} copiedId={copiedId} updatingId={updatingId} openDropdownId={openDropdownId} {...cardActions} />}
+                />
+            ) : (
+                <div className="space-y-12 animate-in fade-in">
+                    <section>
+                        <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-2">
+                            <Calendar className="text-gold" size={24} />
+                            <h2 className="text-xl font-black text-white uppercase tracking-tight">Todas las Citas de Hoy</h2>
+                            <span className="bg-gold/20 text-gold text-xs font-bold px-2 py-1 rounded-full">{todayPending.length}</span>
+                        </div>
+                        {todayPending.length === 0 ? <p className="text-txt-muted text-sm italic">La agenda está limpia por ahora.</p> : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+                                {/* LE PASAMOS LOS BARBEROS A LA TARJETA */}
+                                {todayPending.map(appt => <AdminAppointmentCard key={appt.id} appt={appt} barbers={barbers} copiedId={copiedId} updatingId={updatingId} openDropdownId={openDropdownId} {...cardActions} />)}
+                            </div>
+                        )}
+                    </section>
+
+                    {sortedFutureDates.length > 0 && (
+                        <section className="pt-8">
+                            <h2 className="text-xl font-black text-white uppercase tracking-tight mb-8 flex items-center gap-3"><Calendar className="text-txt-muted" size={24} />Próximos Días</h2>
+                            <div className="space-y-12">
+                                {sortedFutureDates.map((date) => (
+                                    <div key={date} className="relative">
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="h-px bg-linear-to-r from-gold/40 to-transparent grow"></div>
+                                            <div className="bg-bg-main border border-gold/40 px-5 py-2 rounded-full shadow-[0_0_15px_rgba(212,175,55,0.15)] relative z-10"><h3 className="text-gold font-black text-xs md:text-sm uppercase tracking-[0.2em] whitespace-nowrap">{formatDateLocal(date)}</h3></div>
+                                            <div className="h-px bg-linear-to-l from-gold/40 to-transparent grow"></div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
+                                            {/* LE PASAMOS LOS BARBEROS A LA TARJETA */}
+                                            {groupedFuture[date].map(appt => <AdminAppointmentCard key={appt.id} appt={appt} barbers={barbers} copiedId={copiedId} updatingId={updatingId} openDropdownId={openDropdownId} {...cardActions} />)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+                </div>
+            )}
+          </>
+      ) : (
+          // LE PASAMOS LOS BARBEROS AL HISTORIAL
+          <AdminHistoryView pastAppointments={pastAppts} barbers={barbers} />
+      )}
+
+      {/* BOTÓN FLOTANTE CITA RÁPIDA GLOBAL */}
+      {viewMode === 'active' && (
+          <button
+            onClick={() => {
+                setWalkInForm(prev => ({
+                    ...prev,
+                    barberId: '', 
+                    date: getLocalDateString(),
+                    time: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                }));
+                setWalkInModalOpen(true);
+            }}
+            className="fixed bottom-6 right-6 md:bottom-10 md:right-10 bg-gold hover:bg-gold-hover text-bg-main p-4 rounded-full shadow-[0_0_20px_rgba(212,175,55,0.4)] z-40 transition-all hover:scale-110 flex items-center gap-2 group"
+        >
+            <PlusCircle size={28} />
+            <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-[150px] transition-all duration-500 font-black uppercase tracking-widest text-sm">
+            Cita Rápida
+            </span>
+        </button>
+      )}
+
+      {/* MODAL DE CITA RÁPIDA */}
+      {walkInModalOpen && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+              <div className="bg-bg-card border border-gold/30 rounded-2xl w-full max-w-md overflow-hidden shadow-[0_0_40px_rgba(212,175,55,0.15)] animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+                  <div className="bg-gold/10 p-4 flex justify-between items-center border-b border-gold/20 shrink-0">
+                      <h3 className="text-lg font-black text-gold flex items-center gap-2 uppercase tracking-widest"><PlusCircle size={18}/> Venta de Local</h3>
+                      <button onClick={() => setWalkInModalOpen(false)} className="text-gold/50 hover:text-gold transition-colors"><X size={20}/></button>
+                  </div>
+                  
+                  <div className="p-6 space-y-4 overflow-y-auto grow">
                       <div>
-                        <p className="text-xs text-txt-muted uppercase tracking-wider mb-1">Cliente</p>
-                        <p className="text-white font-semibold text-lg leading-tight">{booking.clientName}</p>
+                          <label className="text-xs uppercase font-bold text-txt-muted block mb-2">Nombre del Cliente</label>
+                          <input type="text" placeholder="Ej. Cliente Local" value={walkInForm.clientName} onChange={(e) => setWalkInForm({...walkInForm, clientName: e.target.value})} className="w-full bg-bg-main border border-white/10 rounded-lg p-3 text-white focus:border-gold outline-none text-sm" />
+                      </div>
+
+                      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                          <label className="text-xs uppercase font-bold text-gold block mb-2 items-center gap-1"><User size={12}/> Profesional Asignado</label>
+                          <select value={walkInForm.barberId} onChange={(e) => setWalkInForm({...walkInForm, barberId: e.target.value})} className="w-full bg-bg-main border border-white/10 rounded-lg p-3 text-white focus:border-gold outline-none text-sm">
+                              <option value="">-- Selecciona el Profesional --</option>
+                              {barbers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                          </select>
                       </div>
                       
                       <div>
-                        <p className="text-xs text-txt-muted uppercase tracking-wider mb-1">Servicio</p>
-                        <p className="text-gray-300 text-sm flex items-center gap-1">
-                          <Scissors size={14} className="text-gold/50" /> {booking.serviceName}
-                        </p>
+                          <label className="text-xs uppercase font-bold text-txt-muted block mb-2">Servicio Realizado</label>
+                          <select value={walkInForm.serviceId} onChange={(e) => setWalkInForm({...walkInForm, serviceId: e.target.value})} className="w-full bg-bg-main border border-white/10 rounded-lg p-3 text-white focus:border-gold outline-none text-sm">
+                              <option value="">Selecciona un servicio</option>
+                              {services.map(s => <option key={s.id} value={s.id}>{s.name} - ${s.price}</option>)}
+                          </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className="text-xs uppercase font-bold text-txt-muted block mb-2">Fecha</label>
+                              <input type="date" value={walkInForm.date} onChange={(e) => setWalkInForm({...walkInForm, date: e.target.value})} className="w-full bg-bg-main border border-white/10 rounded-lg p-3 text-white focus:border-gold outline-none text-sm" />
+                          </div>
+                          <div>
+                              <label className="text-xs uppercase font-bold text-txt-muted block mb-2">Hora (Exacta)</label>
+                              <input type="time" value={walkInForm.time} onChange={(e) => setWalkInForm({...walkInForm, time: e.target.value})} className="w-full bg-bg-main border border-white/10 rounded-lg p-3 text-white focus:border-gold outline-none text-sm" />
+                          </div>
                       </div>
 
                       <div>
-                        <p className="text-xs text-txt-muted uppercase tracking-wider mb-1">Barbero Actual</p>
-                        <p className="text-gold text-sm font-medium">{getBarberName(booking.barberId)}</p>
+                          <label className="text-xs uppercase font-bold text-txt-muted block mb-2">Método de Pago</label>
+                          <select value={walkInForm.paymentMethod} onChange={(e) => setWalkInForm({...walkInForm, paymentMethod: e.target.value as PaymentMethodType})} className="w-full bg-bg-main border border-white/10 rounded-lg p-3 text-white focus:border-gold outline-none text-sm">
+                              <option value="cash">Efectivo en Local</option>
+                              <option value="transfer">Transferencia Bancaria</option>
+                              <option value="online">Tarjeta / Redcompra</option>
+                          </select>
                       </div>
-                    </div>
-
-                    <div className="mt-5 pt-4 border-t border-white/10">
-                      <p className="text-xs text-txt-muted uppercase tracking-wider mb-2">Reasignar Cita a:</p>
-                      <select 
-                        className="w-full bg-bg-card border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gold transition-colors cursor-pointer appearance-none"
-                        value=""
-                        onChange={(e) => handleReassign(booking.id, e.target.value)}
-                        disabled={booking.status === 'cancelled' || (booking.status as string) === 'canceled' || booking.status === 'completed'}
-                        style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23D4AF37%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7rem top 50%', backgroundSize: '.65rem auto' }}
-                      >
-                        <option value="" disabled>Seleccionar Barbero...</option>
-                        {barbers.map(barber => (
-                          barber.id !== booking.barberId && (
-                            <option key={barber.id} value={barber.id} className="bg-bg-main">
-                              Mover a {barber.name}
-                            </option>
-                          )
-                        ))}
-                      </select>
-                    </div>
-
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'historial' && (
-        <div className="space-y-8 animate-in fade-in duration-500">
-          
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-txt-muted" />
-            </div>
-            <input
-              type="text"
-              placeholder="Buscar historial por cliente, fecha o ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-3 border border-white/10 rounded-xl bg-bg-card text-txt-main placeholder-txt-muted focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all"
-            />
+                  
+                  <div className="p-4 border-t border-white/10 flex gap-3 shrink-0 bg-black/20">
+                      <button onClick={() => setWalkInModalOpen(false)} className="flex-1 p-3 rounded-lg border border-white/10 text-white font-bold text-sm hover:bg-white/5">Cancelar</button>
+                      <button onClick={submitWalkIn} disabled={isSubmittingWalkIn} className="flex-1 p-3 rounded-lg bg-gold text-bg-main font-black text-sm uppercase tracking-widest hover:bg-gold-hover flex justify-center items-center shadow-lg shadow-gold/20">
+                          {isSubmittingWalkIn ? <Loader2 size={16} className="animate-spin"/> : 'Registrar Venta'}
+                      </button>
+                  </div>
+              </div>
           </div>
-
-          {Object.keys(historyData).length === 0 ? (
-            <div className="text-center py-20 opacity-50 bg-bg-card rounded-xl border border-white/5 border-dashed">
-              <p className="text-txt-main font-bold">No hay historial de citas pasadas.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-                {Object.entries(historyData).map(([month, data]) => {
-                    const isExpanded = expandedMonths.includes(month);
-                    
-                    return (
-                        <div key={month} className="bg-bg-card border border-white/5 rounded-xl overflow-hidden shadow-lg transition-all">
-                            
-                            <div className="w-full p-5 flex flex-col md:flex-row md:items-start justify-between gap-6 hover:bg-white/5 transition-colors">
-                                <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleMonth(month)}>
-                                    <div className="p-3 bg-white/5 rounded-lg text-gold"><CalendarDays size={24}/></div>
-                                    <div>
-                                        <h2 className="text-lg md:text-xl font-black text-white">{month}</h2>
-                                        <p className="text-xs text-txt-muted font-bold uppercase tracking-widest">{data.totalAppts} Citas Globales</p>
-                                    </div>
-                                </div>
-                                
-                                <div className="flex flex-col md:items-end w-full md:w-auto border-t md:border-none border-white/5 pt-4 md:pt-0">
-                                    <p className="text-[10px] uppercase text-txt-muted font-bold tracking-widest mb-1">Ingresos Totales (Barbería)</p>
-                                    <div className="flex items-center gap-4 mb-3">
-                                       <p className="text-2xl font-black text-green-400">{formatMoney(data.totalRevenue)}</p>
-                                       <button onClick={() => toggleMonth(month)} className="text-white/50 bg-white/5 p-2 rounded-full hover:bg-white/10 hover:text-white transition-colors">
-                                           {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                       </button>
-                                    </div>
-                                    
-                                    <div className="flex flex-wrap gap-2 justify-start md:justify-end">
-                                        {data.revenueByMethod.cash > 0 && (
-                                            <div className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 font-bold">
-                                                <Wallet size={12}/> {formatMoney(data.revenueByMethod.cash)}
-                                            </div>
-                                        )}
-                                        {data.revenueByMethod.transfer > 0 && (
-                                            <div className="flex items-center gap-1 text-[10px] text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20 font-bold">
-                                                <Landmark size={12}/> {formatMoney(data.revenueByMethod.transfer)}
-                                            </div>
-                                        )}
-                                        {data.revenueByMethod.online > 0 && (
-                                            <div className="flex items-center gap-1 text-[10px] text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20 font-bold">
-                                                <CreditCard size={12}/> {formatMoney(data.revenueByMethod.online)}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {isExpanded && (
-                                <div className="p-5 md:p-6 bg-black/20 border-t border-white/5 space-y-8 animate-in slide-in-from-top-4 duration-300">
-                                    {Object.entries(data.days).map(([date, appts]) => (
-                                        <div key={date}>
-                                            <div className="flex items-center gap-4 mb-4">
-                                                <div className="h-px bg-white/10 grow"></div>
-                                                <div className="bg-bg-main border border-white/10 px-4 py-1.5 rounded-full">
-                                                    <h3 className="text-txt-muted font-bold text-[10px] md:text-xs uppercase tracking-[0.2em] whitespace-nowrap">
-                                                        {formatDate(date)}
-                                                    </h3>
-                                                </div>
-                                                <div className="h-px bg-white/10 grow"></div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                {appts.map(appt => {
-                                                  const statusDisplay = getStatusDisplay(appt);
-                                                  const isCanceled = appt.status === 'cancelled' || (appt.status as string) === 'canceled';
-                                                  return (
-                                                    <div key={appt.id} className={`bg-bg-card border border-white/5 p-4 rounded-lg flex flex-col justify-between transition-opacity ${isCanceled ? 'opacity-50 grayscale' : 'opacity-90 hover:opacity-100'}`}>
-                                                        
-                                                        <div className="flex justify-between items-start mb-4">
-                                                            <div>
-                                                                <div className="flex items-center gap-2 mb-1.5">
-                                                                    <p className={`text-sm font-bold ${isCanceled ? 'line-through text-txt-muted' : 'text-white'}`}>{appt.clientName}</p>
-                                                                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide border ${statusDisplay.colorClass}`}>
-                                                                        {statusDisplay.text}
-                                                                    </span>
-                                                                </div>
-                                                                <p className="text-xs text-txt-muted flex items-center gap-1">
-                                                                  <Scissors size={12} className="text-gold/50"/> 
-                                                                  {appt.serviceName} 
-                                                                  <span className="text-white/30 mx-1">•</span> 
-                                                                  <span className="text-gold font-bold">{getBarberName(appt.barberId)}</span>
-                                                                </p>
-                                                            </div>
-                                                            <span className="text-xs font-black text-gold bg-gold/10 px-2 py-1 rounded">{appt.time}</span>
-                                                        </div>
-                                                        
-                                                        <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-auto">
-                                                            <PaymentBadge method={appt.paymentMethod} />
-                                                            <span className="text-xs font-bold text-white flex items-center gap-1"><DollarSign size={12} className="text-gold"/>{appt.price}</span>
-                                                        </div>
-                                                    </div>
-                                                  )})}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
-          )}
-        </div>
       )}
+
+      {/* --- INVOCACIÓN DE MODALES --- */}
+      {editingAppt && (
+          <EditAppointmentModal 
+              appt={editingAppt} 
+              services={services}
+              barbers={barbers} 
+              onClose={() => setEditingAppt(null)} 
+              onSave={handleEditSave} 
+              isUpdating={updatingId === editingAppt.id} 
+          />
+      )}
+
+      {deletingAppt && (
+          <DeleteAppointmentModal appt={deletingAppt} onClose={() => setDeletingAppt(null)} onConfirm={handleDeleteConfirm} isUpdating={updatingId === deletingAppt.id} />
+      )}
+
+      <ConfirmModal 
+          isOpen={cancellingAppt !== null}
+          title="¿Cancelar Reserva?"
+          message={`Estás a punto de cancelar la cita de <strong class="text-white">${cancellingAppt?.clientName}</strong>. <br/><br/>Se liberará la hora en la agenda global.`}
+          type="danger"
+          isLoading={updatingId === cancellingAppt?.id}
+          onClose={() => setCancellingAppt(null)}
+          onConfirm={() => { if (cancellingAppt) { handleStatusChange(cancellingAppt.id, 'cancelled'); setCancellingAppt(null); } }}
+      />
     </div>
   );
 };
