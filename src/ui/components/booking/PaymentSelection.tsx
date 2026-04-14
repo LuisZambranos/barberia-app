@@ -70,6 +70,7 @@ export const PaymentSelection = () => {
         initialStatus = 'confirmed'; 
       }
 
+      // 1. CREACIÓN EN BASE DE DATOS (Rápido, bloqueante)
       const ticketId = await createAppointment({
         service: selectedService,
         barber: selectedBarber,
@@ -84,6 +85,7 @@ export const PaymentSelection = () => {
         clientId: user?.uid
       });
 
+      // 2. ENVIAR CORREO EN SEGUNDO PLANO (Sin await bloqueante)
       const emailPayload = {
         to: clientData.email, 
         clientName: clientData.name || clientData.email.split('@')[0],
@@ -95,12 +97,14 @@ export const PaymentSelection = () => {
         paymentMethod: selectedPaymentMethod 
       };
 
+      // Disparamos la promesa del correo pero no la esperamos (Fire & Forget)
       if (initialStatus === 'confirmed') {
-        await sendConfirmationEmail(emailPayload);
+        sendConfirmationEmail(emailPayload).catch(e => console.error("Error email background:", e));
       } else {
-        await sendPendingEmail(emailPayload);
+        sendPendingEmail(emailPayload).catch(e => console.error("Error email background:", e));
       }
 
+      // 3. ENVIAR PUSH EN SEGUNDO PLANO (Ya estaba sin await, lo cual es correcto)
       if (selectedBarber.fcmToken && selectedBarber.notifications?.newBooking) {
         const clientFirstName = clientData.name?.split(' ')[0] || "Un cliente";
         const pushTitle = initialStatus === 'confirmed' ? '✅ Nueva Reserva Confirmada' : '⏳ Solicitud de Reserva';
@@ -109,6 +113,7 @@ export const PaymentSelection = () => {
         sendPushAlert(selectedBarber.fcmToken, pushTitle, pushBody).catch(() => {});
       }
 
+      // 4. MOSTRAR PANTALLA DE ÉXITO INMEDIATAMENTE
       setSuccessId(ticketId);
       setStep(6); 
 
