@@ -67,7 +67,6 @@ export const BarberSelection = () => {
 
               <div>
                 <h3 className="font-bold text-sm md:text-lg mb-1 text-txt-main uppercase tracking-tight leading-tight">{b.name.replace("PRUEBA", "")}</h3>
-                <p className="text-[10px] text-gold font-bold uppercase tracking-widest mb-2 truncate px-1">{b.role}</p>
                 <p className="text-txt-muted text-[10px] leading-tight hidden sm:block">{b.specialty}</p>
               </div>
               {selectedBarber?.id === b.id && (<div className="mt-3 w-3 h-3 bg-gold rounded-full animate-bounce"></div>)}

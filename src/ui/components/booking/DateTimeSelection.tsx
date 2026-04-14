@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../../../core/firebase/config';
 import { useBooking } from '../../context/BookingContext';
 import { useBarberSchedule } from '../../hooks/useBarberSchedule';
 import { createTemporalLock } from '../../../core/services/booking.service';
 import { useToast } from '../../context/ToastContext';
-import { getLocalDateString } from '../../../core/utils/date.utils'; // IMPORTACIÓN NUEVA
+import { getLocalDateString } from '../../../core/utils/date.utils';
+import type { Barber } from '../../../core/models/Barber';
+import { Scissors } from 'lucide-react';
 
 export const DateTimeSelection = () => {
   const { 
     setStep, 
     selectedService, 
     selectedBarber, 
+    setSelectedBarber, // Necesitamos esto para poder cambiar de barbero desde las sugerencias
     selectedDate, 
     setSelectedDate, 
     selectedTime, 
@@ -18,8 +23,8 @@ export const DateTimeSelection = () => {
 
   const { toast } = useToast();
   const [isLocking, setIsLocking] = useState(false);
+  const [otherBarbers, setOtherBarbers] = useState<Barber[]>([]);
 
-  // Inicializa con la fecha local de Chile si no hay ninguna
   useEffect(() => {
     if (!selectedDate) {
       const parts = getLocalDateString().split('-');
@@ -27,7 +32,6 @@ export const DateTimeSelection = () => {
     }
   }, [selectedDate, setSelectedDate]);
 
-  // Convierte el objeto Date (si existe) o usa el día de hoy local (Chile)
   const dateString = selectedDate 
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
     : getLocalDateString();
@@ -38,6 +42,27 @@ export const DateTimeSelection = () => {
     selectedBarber?.id, 
     dateString
   );
+
+  // --- NUEVA LÓGICA: CARGAR OTROS BARBEROS ---
+  useEffect(() => {
+      // Solo cargamos otros barberos si el actual NO tiene horas disponibles y no está cargando
+      if (!loadingSchedule && availableTimes.length === 0) {
+          const fetchOtherBarbers = async () => {
+              try {
+                  const q = query(collection(db, "barbers"), where("active", "==", true));
+                  const querySnapshot = await getDocs(q);
+                  const allActiveBarbers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Barber[];
+                  
+                  // Filtramos para quitar al barbero que ya tenemos seleccionado
+                  const alternativeBarbers = allActiveBarbers.filter(b => b.id !== selectedBarber?.id);
+                  setOtherBarbers(alternativeBarbers);
+              } catch (error) {
+                  console.error("Error trayendo otros barberos:", error);
+              }
+          };
+          fetchOtherBarbers();
+      }
+  }, [availableTimes.length, loadingSchedule, selectedBarber?.id]);
 
   const currentTotal = selectedService?.price || 0; 
 
@@ -114,10 +139,43 @@ export const DateTimeSelection = () => {
                   );
                 })
             ) : (
-                <div className="col-span-3 sm:col-span-4 animate-in fade-in duration-500">
-                    <p className="text-red-400 text-xs border border-red-500/20 bg-red-500/10 p-3 rounded mb-6">
+                <div className="col-span-3 sm:col-span-4 animate-in fade-in duration-500 space-y-6">
+                    <p className="text-error text-xs border border-error/20 bg-error/10 p-3 rounded">
                         Las horas de este profesional ya pasaron o su agenda está llena para hoy.
                     </p>
+
+                    {/* --- SUGERENCIAS DE OTROS BARBEROS --- */}
+                    {otherBarbers.length > 0 && (
+                        <div className="pt-4 border-t border-white/10">
+                            <p className="text-xs text-txt-muted uppercase font-bold tracking-widest mb-4">
+                                Otros profesionales disponibles
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {otherBarbers.map(barber => (
+                                    <div 
+                                        key={barber.id}
+                                        onClick={() => {
+                                            setSelectedBarber(barber);
+                                            setSelectedTime(null); // Reseteamos la hora al cambiar
+                                        }}
+                                        className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:border-gold/50 hover:bg-white/10 transition-all group"
+                                    >
+                                        <img 
+                                            src={barber.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(barber.name)}&background=1e293b&color=D4AF37`} 
+                                            alt={barber.name}
+                                            className="w-10 h-10 rounded-full object-cover grayscale-30 group-hover:grayscale-0 transition-all"
+                                        />
+                                        <div>
+                                            <h4 className="text-sm font-bold text-white group-hover:text-gold transition-colors">{barber.name.replace("PRUEBA", "")}</h4>
+                                            <div className="flex items-center gap-2 text-[10px] text-txt-muted mt-0.5">
+                                                <span className="flex items-center gap-1"><Scissors size={10}/> {barber.specialty || 'Especialista'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
           </div>

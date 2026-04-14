@@ -16,6 +16,7 @@ export interface PaymentMethods {
 }
 
 export interface Barber {
+  active?: boolean;
   id: string;
   name: string;
   email: string;

@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { auth, db } from "../../core/firebase/config";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, collection, query, where, getDocs, updateDoc } from "firebase/firestore";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react"; // <-- Importamos los iconos del ojo
-import { useAuth } from "../context/AuthContext"; // <-- Importamos el contexto para el guardián
+import { Eye, EyeOff } from "lucide-react"; 
+import { useAuth } from "../context/AuthContext"; 
 
 const Login = () => {
-  // Estados originales y de CRM
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
@@ -16,7 +15,6 @@ const Login = () => {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
 
-  // --- NUEVOS ESTADOS PARA CONTRASEÑAS ---
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -27,8 +25,6 @@ const Login = () => {
   
   const { user, role } = useAuth();
 
-  // GUARDIÁN SILENCIOSO: Si el usuario ya está logueado y tiene rol, sácalo del Login automáticamente.
-  // Esto evita que te devuelva al formulario si recargas la página o por retrasos de Firebase.
   useEffect(() => {
     if (user && role) {
       if (role === "admin" || role === "barber") {
@@ -46,7 +42,6 @@ const Login = () => {
 
     try {
       if (isRegistering) {
-        // === VALIDACIONES DE REGISTRO ===
         if (name.trim() === "" || phone.trim() === "") {
             throw new Error("missing-fields");
         }
@@ -54,9 +49,24 @@ const Login = () => {
             throw new Error("passwords-dont-match");
         }
 
-        // === REGISTRO ===
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const newUser = userCredential.user;
+
+        // === GUARDIÁN DE BARBEROS ===
+        let finalRole = "client"; 
+        let targetBarberId = null;
+
+        const q = query(collection(db, "barbers"), where("email", "==", email));
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+            finalRole = "barber";
+            targetBarberId = snapshot.docs[0].id;
+            
+            await updateDoc(doc(db, "barbers", targetBarberId), {
+                authUid: newUser.uid
+            });
+        }
 
         // Guardar en Firestore para el CRM
         await setDoc(doc(db, "users", newUser.uid), {
@@ -64,17 +74,13 @@ const Login = () => {
           email: newUser.email,
           name: name.trim(),      
           phone: phone.trim(),    
-          rol: "client",
-          createdAt: new Date().toISOString()
+          rol: finalRole,
+          createdAt: new Date().toISOString(),
+          ...(targetBarberId ? { linkedBarberId: targetBarberId } : {})
         });
-        
-        // No necesitamos hacer navigate() aquí porque el useEffect de arriba 
-        // lo atrapará automáticamente en cuanto detecte la nueva sesión.
 
       } else {
-        // === LOGIN ===
         await signInWithEmailAndPassword(auth, email, password);
-        // Igual que arriba, el useEffect se encargará de mover al usuario.
       }
     } catch (err: any) {
       let friendlyMessage = "Ocurrió un error. Inténtalo de nuevo.";
@@ -94,7 +100,7 @@ const Login = () => {
       }
       
       setError(friendlyMessage);
-      setIsLoading(false); // Solo quitamos el loading si hay error
+      setIsLoading(false); 
     } 
   };
 
@@ -115,7 +121,6 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           
-          {/* CAMPOS DE CRM (Solo en Registro) */}
           {isRegistering && (
              <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
                 <div className="space-y-1">
@@ -146,7 +151,6 @@ const Login = () => {
              </div>
           )}
 
-          {/* EMAIL */}
           <div className="space-y-1">
             <label className="text-[9px] font-bold text-txt-muted uppercase tracking-widest ml-1">Email</label>
             <input
@@ -160,7 +164,6 @@ const Login = () => {
             />
           </div>
 
-          {/* CONTRASEÑA (Con botón de ojo) */}
           <div className="space-y-1">
             <label className="text-[9px] font-bold text-txt-muted uppercase tracking-widest ml-1">Contraseña</label>
             <div className="relative">
@@ -183,7 +186,6 @@ const Login = () => {
             </div>
           </div>
 
-          {/* CONFIRMAR CONTRASEÑA (Solo en Registro) */}
           {isRegistering && (
              <div className="space-y-1 animate-in fade-in slide-in-from-top-4 duration-300">
                 <label className="text-[9px] font-bold text-txt-muted uppercase tracking-widest ml-1">Confirmar Contraseña</label>
@@ -224,7 +226,6 @@ const Login = () => {
             onClick={() => { 
                 setIsRegistering(!isRegistering); 
                 setError(""); 
-                // Limpiamos todo al cambiar de modo
                 setName(""); 
                 setPhone(""); 
                 setPassword("");

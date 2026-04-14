@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, updateDoc, addDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { type Barber } from "../models/Barber";
 
@@ -46,6 +46,28 @@ export const updateBarberProfile = async (barberId: string, data: Partial<Barber
     await updateDoc(barberRef, data);
   } catch (error) {
     console.error("Error actualizando perfil del barbero:", error);
+    throw error;
+  }
+};
+
+// Crea un nuevo barbero
+export const createBarber = async (data: Omit<Barber, "id">): Promise<string> => {
+  try {
+    const docRef = await addDoc(collection(db, "barbers"), {
+      ...data,
+      active: true, // Siempre nacen activos
+      // Le damos un horario base por defecto
+      schedule: {
+        active: true,
+        start: "10:00",
+        end: "20:00",
+        interval: 60,
+        days: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: true, sun: false }
+      }
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error("Error creando barbero:", error);
     throw error;
   }
 };
