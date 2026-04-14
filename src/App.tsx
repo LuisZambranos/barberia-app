@@ -1,48 +1,59 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import ProtectedRoute from "./components/ProtectedRoute";
-import Layout from "./components/Layout";
-import Home from "./pages/Home";
-import Booking from "./pages/Booking";
-import Login from "./pages/Login"; 
-import Admin from "./pages/Admin";
-import BarberPage from "./pages/BarberPage";
-import NotFound from "./pages/NotFound";
-
-// ... (Tus importaciones arriba)
+import { AuthProvider } from "./ui/context/AuthContext";
+import { BookingProvider } from "./ui/context/BookingContext";
+import { ToastProvider } from "./ui/context/ToastContext"; // <-- IMPORTAMOS EL TOAST PROVIDER
+import ProtectedRoute from "./ui/components/ProtectedRoute";
+import Layout from "./ui/components/Layout";
+import Home from "./ui/pages/Home";
+import Booking from "./ui/pages/Booking";
+import Login from "./ui/pages/Login"; 
+import Admin from "./ui/pages/Admin";
+import BarberPage from "./ui/pages/BarberPage";
+import NotFound from "./ui/pages/NotFound";
+import NotificationController from './ui/components/NotificationController';
 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
+      <BookingProvider>
+        {/* ENVOLVEMOS LA APP CON EL TOAST PROVIDER */}
+        <ToastProvider> 
+          <BrowserRouter>
             
-            {/* Rutas Públicas */}
-            <Route path="/" element={<Home />}/>
-            <Route path="login" element={<Login />}/>
-            
-            {/* Rutas Protegidas (Cualquier logueado) */}
-            <Route element={<ProtectedRoute allowedRoles={['client', 'admin', 'barber']} />}>
-              <Route path="book" element={<Booking />}/>
-            </Route>
+            {/* EL CONTROLADOR VA AQUÍ, SIEMPRE VIVO Y ESCUCHANDO */}
+            <NotificationController /> 
 
-            {/* Rutas de Staff (Barberos y Admins) */}
-            <Route element={<ProtectedRoute allowedRoles={['barber', 'admin']} />}>
-              <Route path="/barber" element={<BarberPage />} />
-            </Route>
+            <Routes>
+              <Route element={<Layout />}>
+                
+                {/* Rutas Públicas */}
+                <Route path="/" element={<Home />}/>
+                <Route path="login" element={<Login />}/>
+                
+                {/* Rutas Protegidas */}
+                <Route element={<ProtectedRoute allowedRoles={['client', 'admin', 'barber']} />}>
+                  <Route path="book" element={<Booking />}/>
+                </Route>
 
-            {/* Panel de Admins (Solo Admins pueden ver) */}
-            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-              <Route path="/admin" element={<Admin />} />
-            </Route>
+                {/* Rutas de Staff */}
+                <Route element={<ProtectedRoute allowedRoles={['barber', 'admin']} />}>
+                  <Route path="/barber" element={<BarberPage />} />
+                </Route>
 
-          </Route>
+                {/* Panel de Admins */}
+                <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                  <Route path="/admin" element={<Admin />} />
+                </Route>
 
-          {/* Ruta 404 global */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+              </Route>
+
+              {/* Ruta 404 global */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+
+          </BrowserRouter>
+        </ToastProvider>
+      </BookingProvider>
     </AuthProvider>
   )
 }
