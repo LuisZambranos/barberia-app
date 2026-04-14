@@ -29,4 +29,8 @@ export interface Appointment {
   basePrice?: number;         // El precio base del paquete seleccionado
   selectedItems?: string[];   // Las casillas que el cliente SÍ dejó marcadas
   hasBeardAddon?: boolean;    // true si agregó el Corte de Barba (+ $5.000)
+
+  // --- NUEVAS PROPIEDADES PARA WALK-INS ---
+  isWalkIn?: boolean;
+  blocksSchedule?: boolean;
 }

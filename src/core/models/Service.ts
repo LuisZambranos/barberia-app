@@ -1,4 +1,5 @@
 export interface Service {
+  active?: boolean;
   id: string;
   name: string;
   price: number;

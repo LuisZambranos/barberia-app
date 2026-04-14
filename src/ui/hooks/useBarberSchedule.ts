@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../core/firebase/config";
+import { getLocalDateString } from "../../core/utils/date.utils"; 
 
 const DEFAULT_START = 10;
 const DEFAULT_END = 20;
@@ -19,11 +20,9 @@ export const useBarberSchedule = (barberId: string | undefined, date: string) =>
       setLoadingSchedule(true);
       
       try {
-        // --- OPTIMIZACIÓN: PARALELISMO CON LOCKS ---
         const barberRef = doc(db, "barbers", barberId);
         const barberPromise = getDoc(barberRef);
 
-        // 1. Promesa de citas confirmadas/pendientes
         const qAppointments = query(
             collection(db, "appointments"),
             where("barberId", "==", barberId),
@@ -32,7 +31,6 @@ export const useBarberSchedule = (barberId: string | undefined, date: string) =>
         );
         const appointmentsPromise = getDocs(qAppointments);
 
-        // 2. NUEVO: Promesa de bloqueos temporales (Asientos de cine)
         const qLocks = query(
             collection(db, "locks"),
             where("barberId", "==", barberId),
@@ -40,14 +38,12 @@ export const useBarberSchedule = (barberId: string | undefined, date: string) =>
         );
         const locksPromise = getDocs(qLocks);
 
-        // Ejecutamos las 3 consultas al mismo tiempo para máxima velocidad
         const [barberSnap, appointmentsSnap, locksSnap] = await Promise.all([
           barberPromise, 
           appointmentsPromise,
           locksPromise
         ]);
 
-        // --- PROCESAMIENTO DE DATOS ---
         let startHour = DEFAULT_START;
         let endHour = DEFAULT_END;
         let isDayEnabled = true;
@@ -60,7 +56,9 @@ export const useBarberSchedule = (barberId: string | undefined, date: string) =>
             }
 
             if (data.schedule.days) {
-                const currentDayIndex = new Date(date + "T12:00:00").getDay(); 
+                const parts = date.split('-');
+                const localDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                const currentDayIndex = localDate.getDay(); 
                 const daysMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
                 const dayKey = daysMap[currentDayIndex];
 
@@ -79,28 +77,40 @@ export const useBarberSchedule = (barberId: string | undefined, date: string) =>
             setLoadingSchedule(false);
             return;
         }
-
-        // --- B. LISTAR HORAS OCUPADAS Y BLOQUEADAS ---
         
-        // Citas reales guardadas
-        const takenAppointments = appointmentsSnap.docs.map(doc => doc.data().time);
+        // --- AQUÍ ESTÁ LA MAGIA DEL SWITCH ---
+        const takenAppointments = appointmentsSnap.docs
+            .map(doc => doc.data())
+            .filter(appt => {
+                // Si es Cita Rápida Y el barbero marcó "Solo contable" (blocksSchedule en false),
+                // lo sacamos de la lista de horas ocupadas para que la web la siga mostrando disponible.
+                if (appt.isWalkIn === true && appt.blocksSchedule === false) {
+                    return false; 
+                }
+                return true;
+            })
+            .map(appt => appt.time);
 
-        // Bloqueos temporales vigentes
         const now = new Date().getTime();
         const activeLocks = locksSnap.docs
             .map(doc => doc.data())
-            // FILTRO CLAVE: Solo tomamos en cuenta los bloqueos que NO han expirado
             .filter(lockData => lockData.expiresAt > now) 
             .map(lockData => lockData.time);
 
-        // Unimos ambas listas (Las horas ocupadas reales + Las horas reservadas temporalmente)
         const allTakenTimes = [...takenAppointments, ...activeLocks];
 
-        // --- C. GENERAR ARRAY FINAL ---
         const times: string[] = [];
+        
+        const isToday = date === getLocalDateString();
+        const currentHour = new Date().getHours();
+        
         for (let i = startHour; i < endHour; i++) {
           const timeSlot = `${i}:00`;
-          // Solo agregamos si NO está en nuestra lista combinada de ocupadas/bloqueadas
+          
+          if (isToday && i <= currentHour) {
+              continue;
+          }
+
           if (!allTakenTimes.includes(timeSlot)) {
              times.push(timeSlot);
           }

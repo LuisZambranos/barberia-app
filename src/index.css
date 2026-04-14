@@ -21,6 +21,7 @@
   /* Estados */
   --color-success: #10B981;
   --color-error: #EF4444;
+  --color-error-hover: #DC2626; /* NUEVO: Rojo más oscuro para hover */
 
   /* Fuentes */
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -43,6 +44,8 @@
   --color-text-primary: #0f172a;
   --color-text-secondary: #64748b;
   --color-accent: #D4AF37;
+  --color-error: #EF4444;
+  --color-error-hover: #DC2626;
   
   color-scheme: light;
 }
@@ -64,6 +67,7 @@ body {
   --color-gold-hover: var(--color-accent-hover);
   --color-success: var(--color-success);
   --color-error: var(--color-error);
+  --color-error-hover: var(--color-error-hover); /* NUEVA VARIABLE VINCULADA */
 }
 
 @layer base {

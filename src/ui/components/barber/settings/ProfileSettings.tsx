@@ -1,7 +1,4 @@
-import { useState, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
-import { uploadBarberPhoto } from '../../../../core/services/storage.service';
-import { useToast } from '../../../context/ToastContext';
+import { useState } from 'react';
 
 interface ProfileSettingsProps {
   barberId: string;
@@ -9,43 +6,13 @@ interface ProfileSettingsProps {
   initialSpecialty: string;
   initialPhotoUrl?: string;
   initialInstagram?: string;
-onProfileUpdate: (data: { name?: string; specialty?: string; photoUrl?: string; instagram?: string }) => void;
+  onProfileUpdate: (data: { name?: string; specialty?: string; instagram?: string }) => void;
 }
 
-export const ProfileSettings = ({ barberId, initialName, initialSpecialty, initialPhotoUrl, initialInstagram, onProfileUpdate }: ProfileSettingsProps) => {
-  const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const [loading, setLoading] = useState(false);
+export const ProfileSettings = ({ initialName, initialSpecialty, initialPhotoUrl, initialInstagram, onProfileUpdate }: ProfileSettingsProps) => {
   const [name, setName] = useState(initialName);
   const [specialty, setSpecialty] = useState(initialSpecialty);
-  const [previewImage, setPreviewImage] = useState<string | null>(initialPhotoUrl || null);
   const [instagram, setInstagram] = useState(initialInstagram || '');
-
-  const handleImageClick = () => fileInputRef.current?.click();
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Vista previa instantánea
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewImage(objectUrl);
-    setLoading(true);
-    toast.info("Subiendo foto...");
-
-    try {
-      const downloadUrl = await uploadBarberPhoto(file, barberId);
-      // Notificamos al padre (ConfigView) que la URL cambió
-      onProfileUpdate({ photoUrl: downloadUrl });
-      toast.success("Foto actualizada. Recuerda guardar los cambios.");
-    } catch (error: any) {
-      toast.error(error.message || "Error al subir la imagen");
-      setPreviewImage(initialPhotoUrl || null); // Revertimos si falla
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Barbero')}&background=1e293b&color=D4AF37&size=200`;
 
@@ -54,29 +21,17 @@ export const ProfileSettings = ({ barberId, initialName, initialSpecialty, initi
       <h2 className="text-xl font-bold text-gold mb-6 uppercase tracking-widest">Perfil Profesional</h2>
       
       <div className="flex flex-col sm:flex-row gap-8 items-start">
-        {/* Avatar Section */}
+        {/* Avatar Section - AHORA ES SOLO LECTURA */}
         <div className="flex flex-col items-center space-y-4">
-          <div 
-            onClick={handleImageClick}
-            className={`relative w-32 h-32 rounded-full overflow-hidden border-2 border-gold/30 cursor-pointer group hover:border-gold transition-all shadow-xl ${loading ? 'opacity-50 pointer-events-none' : ''}`}
-          >
+          <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-white/10 shadow-xl opacity-80 grayscale-20">
             <img 
-              src={previewImage || fallbackAvatar} 
+              src={initialPhotoUrl || fallbackAvatar} 
               alt="Perfil" 
               className="w-full h-full object-cover object-top"
             />
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="text-xs font-bold text-white uppercase tracking-widest text-center">Cambiar<br/>Foto</span>
-            </div>
-            {loading && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                 <Loader2 className="animate-spin text-gold" size={24} />
-              </div>
-            )}
           </div>
-          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-          <p className="text-[10px] text-txt-muted text-center max-w-[120px]">
-            Click para subir foto (Max 2MB)
+          <p className="text-[10px] text-txt-muted text-center max-w-[140px] uppercase font-bold">
+            Foto administrada por AJ Studio
           </p>
         </div>
 

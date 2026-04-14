@@ -3,6 +3,7 @@ import { useBooking } from '../../context/BookingContext';
 import { useBarberSchedule } from '../../hooks/useBarberSchedule';
 import { createTemporalLock } from '../../../core/services/booking.service';
 import { useToast } from '../../context/ToastContext';
+import { getLocalDateString } from '../../../core/utils/date.utils'; // IMPORTACIÓN NUEVA
 
 export const DateTimeSelection = () => {
   const { 
@@ -18,33 +19,25 @@ export const DateTimeSelection = () => {
   const { toast } = useToast();
   const [isLocking, setIsLocking] = useState(false);
 
-  // El hook ahora usa las variables del contexto central
-  const { availableTimes, loadingSchedule } = useBarberSchedule(
-    selectedBarber?.id, 
-    selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
-  );
-
+  // Inicializa con la fecha local de Chile si no hay ninguna
   useEffect(() => {
     if (!selectedDate) {
-      setSelectedDate(new Date());
+      const parts = getLocalDateString().split('-');
+      setSelectedDate(new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
     }
   }, [selectedDate, setSelectedDate]);
 
-  // Obtenemos la fecha en string para el input type="date"
-  const dateString = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-  const todayString = new Date().toISOString().split('T')[0];
+  // Convierte el objeto Date (si existe) o usa el día de hoy local (Chile)
+  const dateString = selectedDate 
+    ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+    : getLocalDateString();
+    
+  const todayString = getLocalDateString();
 
-  // Lógica de horas pasadas
-  const now = new Date();
-  const isToday = dateString === todayString;
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-
-  const validTimes = availableTimes.filter(time => {
-    if (!isToday) return true;
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours > currentHour || (hours === currentHour && minutes > currentMinute);
-  });
+  const { availableTimes, loadingSchedule } = useBarberSchedule(
+    selectedBarber?.id, 
+    dateString
+  );
 
   const currentTotal = selectedService?.price || 0; 
 
@@ -53,11 +46,7 @@ export const DateTimeSelection = () => {
     
     setIsLocking(true);
     
-    // Formateamos la fecha para la base de datos
-    const dbDateString = selectedDate.toISOString().split('T')[0];
-    
-    // Creamos el candado en Firebase
-    const success = await createTemporalLock(selectedBarber.id, dbDateString, selectedTime);
+    const success = await createTemporalLock(selectedBarber.id, dateString, selectedTime);
     setIsLocking(false);
 
     if (success) {
@@ -90,8 +79,8 @@ export const DateTimeSelection = () => {
               type="date" 
               value={dateString}
               onChange={(e) => {
-                  const newDate = new Date(e.target.value);
-                  newDate.setMinutes(newDate.getMinutes() + newDate.getTimezoneOffset());
+                  const parts = e.target.value.split('-');
+                  const newDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
                   setSelectedDate(newDate);
                   setSelectedTime(null); 
               }}
@@ -107,8 +96,8 @@ export const DateTimeSelection = () => {
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
             {loadingSchedule ? (
                 <p className="col-span-3 text-gold animate-pulse text-sm">Cargando disponibilidad...</p>
-            ) : validTimes.length > 0 ? (
-                validTimes.map(time => {
+            ) : availableTimes.length > 0 ? (
+                availableTimes.map(time => {
                   const isSelected = selectedTime === time;
                   return (
                     <button

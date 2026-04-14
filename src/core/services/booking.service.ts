@@ -1,9 +1,10 @@
-import { collection, doc, runTransaction, getDoc, deleteDoc, query, where, getDocs } from "firebase/firestore";
+import { collection, doc, runTransaction, getDoc, deleteDoc, query, where, getDocs, updateDoc,onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import type { Service } from "../models/Service";
 import type { Barber } from "../models/Barber";
-import type { PaymentMethodType } from "../models/Appointment";
+import type { Appointment,PaymentMethodType } from "../models/Appointment";
 import { sendReviewEmail, sendConfirmationEmail, sendCancellationEmail } from "./email.service";
+
 
 interface BookingData {
   service: Service;
@@ -247,5 +248,170 @@ export const removeManualBlock = async (barberId: string, date: string, time: st
     await deleteDoc(lockRef);
   } catch (error) {
     console.error("Error eliminando bloqueo manual:", error);
+  }
+};
+
+// --- FASE 4: EDICIÓN Y ELIMINACIÓN DE CITAS (BARBERO/ADMIN) ---
+
+export const updateAppointmentData = async (
+  appointmentId: string,
+  barberId: string,
+  newDate: string,
+  newTime: string,
+  newPaymentMethod: PaymentMethodType,
+  newService?: Service // <-- NUEVO: Recibe el servicio opcionalmente
+): Promise<void> => {
+  try {
+    // 1. Verificamos si la nueva hora está ocupada (excluyendo la cita actual)
+    const q = query(
+      collection(db, "appointments"),
+      where("barberId", "==", barberId),
+      where("date", "==", newDate)
+    );
+    const snapshot = await getDocs(q);
+    const isOccupied = snapshot.docs.some(doc => {
+        const appt = doc.data();
+        return doc.id !== appointmentId && 
+               appt.time === newTime && 
+               appt.status !== "cancelled" && 
+               appt.status !== "canceled";
+    });
+
+    if (isOccupied) {
+        throw new Error("HORA_OCUPADA");
+    }
+
+    // 2. Preparamos los datos a actualizar
+    const updatePayload: any = {
+      date: newDate,
+      time: newTime,
+      paymentMethod: newPaymentMethod
+    };
+
+    // Si enviaron un nuevo servicio, actualizamos el nombre y el precio
+    if (newService) {
+        updatePayload.serviceId = newService.id;
+        updatePayload.serviceName = newService.name;
+        updatePayload.price = newService.price;
+        updatePayload.basePrice = newService.price;
+    }
+
+    const appointmentRef = doc(db, "appointments", appointmentId);
+    await updateDoc(appointmentRef, updatePayload);
+
+  } catch (error) {
+    console.error("Error al actualizar datos de la cita:", error);
+    throw error;
+  }
+};
+
+export const deleteAppointment = async (appointmentId: string): Promise<void> => {
+  try {
+    const appointmentRef = doc(db, "appointments", appointmentId);
+    await deleteDoc(appointmentRef);
+  } catch (error) {
+    console.error("Error al eliminar la cita:", error);
+    throw error;
+  }
+};
+
+export const subscribeToBarberAppointments = (
+  barberId: string, 
+  onUpdate: (appointments: Appointment[]) => void
+) => {
+  const q = query(
+    collection(db, "appointments"), 
+    where("barberId", "==", barberId)
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const dbData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Appointment[];
+    
+    // ORDENAMIENTO CRONOLÓGICO PERFECTO (Fechas y Horas)
+    dbData.sort((a, b) => {
+      // 1. Primero ordenamos por fecha (YYYY-MM-DD se ordena bien como string)
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      
+      // 2. Luego ordenamos por hora (Convirtiendo "9:00" a 900 para compararlo como número)
+      const parseTime = (timeStr: string) => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes; // Convierte todo a minutos totales
+      };
+      
+      return parseTime(a.time) - parseTime(b.time);
+    });
+    
+    onUpdate(dbData);
+  });
+};
+
+// --- FASE 5: REGISTRO RÁPIDO (WALK-INS) ---
+
+export const createWalkInAppointment = async (data: {
+  barberId: string;
+  clientName: string;
+  date: string;
+  time: string;
+  price: number;
+  serviceId: string;   // <-- NUEVO
+  serviceName: string; // <-- NUEVO
+  paymentMethod: PaymentMethodType;
+  blockSchedule: boolean;
+}): Promise<string> => {
+  try {
+    const barberDoc = await getDoc(doc(db, "barbers", data.barberId));
+    const barberName = barberDoc.exists() ? barberDoc.data().name : 'Barbero';
+
+    const counterRef = doc(db, "dailyCounters", data.date);
+    const shortId = await runTransaction(db, async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      let newCount = 1;
+      if (counterDoc.exists()) newCount = counterDoc.data().count + 1;
+      transaction.set(counterRef, { count: newCount });
+      return `#W${newCount}`; 
+    });
+
+    const newAppointmentRef = doc(collection(db, "appointments"));
+    const payload = {
+      shortId,
+      serviceId: data.serviceId,     // Guarda el ID real del servicio
+      serviceName: data.serviceName, // Guarda el Nombre real del servicio
+      barberId: data.barberId,
+      barberName,
+      date: data.date,
+      time: data.time,
+      price: data.price,
+      basePrice: data.price,
+      selectedItems: ["Cita Rápida"], // Etiqueta visual para la tarjeta
+      hasBeardAddon: false,
+      clientId: null,
+      clientName: data.clientName,
+      clientPhone: 'Local',
+      clientEmail: '',
+      status: 'completed', 
+      paymentMethod: data.paymentMethod,
+      createdAt: new Date().toISOString(),
+      isWalkIn: true,
+      blocksSchedule: data.blockSchedule
+    };
+
+    await setDoc(newAppointmentRef, payload);
+
+    if (data.blockSchedule) {
+        const lockId = `manual_${data.barberId}_${data.date}_${data.time}`;
+        await setDoc(doc(db, "locks", lockId), {
+            barberId: data.barberId,
+            date: data.date,
+            time: data.time,
+            type: 'manual',
+            expiresAt: new Date().getTime() + (365 * 24 * 60 * 60 * 1000), 
+            expireAtDate: new Date(new Date().getTime() + (365 * 24 * 60 * 60 * 1000))
+        });
+    }
+
+    return newAppointmentRef.id;
+  } catch (error) {
+    console.error("Error creando cita rápida:", error);
+    throw error;
   }
 };
