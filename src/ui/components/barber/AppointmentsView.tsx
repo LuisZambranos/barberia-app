@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Clock, DollarSign, Phone, MessageCircle, Scissors, Search, Loader2, Mail, Copy, Calendar, Landmark, CreditCard, Wallet, CheckCircle2, PlusCircle, ChevronDown, Edit2, Trash2, X } from "lucide-react"; 
+import { Clock, DollarSign, Phone, Scissors, Search, Loader2, Mail, Copy, Calendar, Landmark, CreditCard, Wallet, CheckCircle2, PlusCircle, ChevronDown, Edit2, Trash2, X } from "lucide-react"; 
 import { type Appointment, type PaymentMethodType } from "../../../core/models/Appointment"; 
 import { sendConfirmationMessage } from "../../../core/utils/whatsapp";
 import { copyToClipboard } from "../../../core/utils/clipboard";
@@ -8,6 +8,7 @@ import { getLocalDateString, isTodayLocal, isPastLocal, formatDateLocal } from "
 import { EditAppointmentModal } from "../shared/EditAppointmentModal";
 import { DeleteAppointmentModal } from "../shared/DeleteAppointmentModal";
 import { ConfirmModal } from "../shared/ConfirmModal";
+import { FaWhatsapp } from 'react-icons/fa6';
 
 const PaymentBadge = ({ method }: { method?: 'cash' | 'transfer' | 'online' }) => {
     if (method === 'transfer') return <div className="flex w-fit items-center gap-1 text-[9px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-bold uppercase tracking-wider" title="Transferencia Bancaria"><Landmark size={10}/> Transf.</div>;
@@ -223,7 +224,7 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
             {!appt.isWalkIn && (
                 <div className="grid grid-cols-2 border-t border-white/5 divide-x divide-white/5">
                     <a href={`tel:${appt.clientPhone}`} className="p-3 flex justify-center items-center gap-2 hover:bg-gold hover:text-bg-main transition-colors text-xs font-bold text-txt-muted"><Phone size={14} /> Llamar</a>
-                    <button onClick={() => sendConfirmationMessage(appt)} className="p-3 flex justify-center items-center gap-2 hover:bg-green-600 hover:text-white transition-colors text-xs font-bold text-green-500"><MessageCircle size={14} /> WhatsApp</button>
+                    <button onClick={() => sendConfirmationMessage(appt)} className="p-3 flex justify-center items-center gap-2 hover:bg-green-600 hover:text-white transition-colors text-xs font-bold text-green-500"><FaWhatsapp size={14} /> WhatsApp</button>
                 </div>
             )}
             
