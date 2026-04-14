@@ -1,36 +1,31 @@
-// api/sendPush.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-// Importaciones MODULARES (A prueba de fallos en Vercel)
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
 
-// Función para inicializar de forma segura
 const initFirebase = () => {
-  // getApps() es la forma moderna y segura de verificar las apps
   if (getApps().length === 0) {
-    try {
-      const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-      
-      if (!privateKey) {
-        console.error("ALERTA: FIREBASE_PRIVATE_KEY no está definida en las variables de entorno.");
-      }
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    // Forzamos el reemplazo de los saltos de línea para que Firebase entienda la llave
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-      initializeApp({
-        credential: cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: privateKey,
-        }),
-      });
-      console.log("Firebase Admin inicializado correctamente.");
-    } catch (error) {
-      console.error("Error crítico inicializando Firebase Admin:", error);
+    // Validador estricto: Si falta una, cortamos y avisamos
+    if (!projectId || !clientEmail || !privateKey) {
+      throw new Error(`Faltan variables de entorno. ProjectID: ${!!projectId}, Email: ${!!clientEmail}, Key: ${!!privateKey}`);
     }
+
+    initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        privateKey,
+      }),
+    });
   }
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // 1. CORS Headers obligatorios
+  // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -43,52 +38,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  // 1. Intentamos inicializar Firebase
+  try {
+    initFirebase();
+  } catch (initError: any) {
+    return res.status(500).json({ 
+      error: 'Error de Inicialización de Firebase', 
+      details: initError.message 
+    });
   }
 
-  // 2. Inicializamos Firebase ANTES de usarlo
-  initFirebase();
-
+  // 2. Intentamos enviar el Push
   try {
     const { token, title, body, data } = req.body;
-
-    if (!token) {
-      return res.status(400).json({ error: 'Token FCM es requerido' });
-    }
+    if (!token) return res.status(400).json({ error: 'Falta el token FCM en la petición' });
 
     const message = {
       notification: {
         title,
         body,
       },
-      // CONFIGURACIÓN DE APARIENCIA EN ANDROID/CHROME
+      // 1. Para Android Nativo / Firebase
       android: {
         notification: {
-          icon: 'https://ajstudio-dev.vercel.app/Logo-2.png', // <-- Tu logo oscuro (ideal para notificaciones)
-          color: '#D4AF37', // Tu color dorado
+          icon: 'https://ajstudio-dev.vercel.app/Logo-2.png',
+          color: '#D4AF37',
         }
       },
+      // 2. Para Chrome / PWA (Elimina la "A" y pone tu logo)
       webpush: {
         notification: {
-          icon: '/Logo-2.png',
+          icon: 'https://ajstudio-dev.vercel.app/Logo-2.png',
+          badge: 'https://ajstudio-dev.vercel.app/Logo-2.png',
         }
       },
       data: data || {},
       token: token,
     };
 
-    // 3. ¡Disparamos el Push usando la función modular!
     const response = await getMessaging().send(message);
-    
-    console.log("Push enviado con éxito. MessageID:", response);
     return res.status(200).json({ success: true, messageId: response });
 
   } catch (error: any) {
-    console.error('Error enviando push notification:', error);
     return res.status(500).json({ 
-      error: 'Error interno al enviar la notificación',
-      details: error.message || 'Error desconocido'
+      error: 'Error enviando Push a Google', 
+      details: error.message 
     });
   }
 }
