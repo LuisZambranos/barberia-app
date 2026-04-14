@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Clock, DollarSign, Phone, Scissors, Search, Loader2, Mail, Copy, Calendar, Landmark, CreditCard, Wallet, CheckCircle2, PlusCircle, ChevronDown, Edit2, Trash2, X } from "lucide-react"; 
+import { Clock, DollarSign, Phone, Scissors, Loader2, Mail, Copy, Calendar, Landmark, CreditCard, Wallet, CheckCircle2, PlusCircle, ChevronDown, Edit2, Trash2, X } from "lucide-react"; 
 import { type Appointment, type PaymentMethodType } from "../../../core/models/Appointment"; 
 import { sendConfirmationMessage } from "../../../core/utils/whatsapp";
 import { copyToClipboard } from "../../../core/utils/clipboard";
@@ -9,6 +9,9 @@ import { EditAppointmentModal } from "../shared/EditAppointmentModal";
 import { DeleteAppointmentModal } from "../shared/DeleteAppointmentModal";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { FaWhatsapp } from 'react-icons/fa6';
+import { SearchBar } from "../shared/SearchBar";
+import { useSearch } from "../../hooks/useSearch";
+import { SearchResultsDisplay } from "../shared/SearchResultsDisplay"; // <-- NUEVA IMPORTACIÓN
 
 const PaymentBadge = ({ method }: { method?: 'cash' | 'transfer' | 'online' }) => {
     if (method === 'transfer') return <div className="flex w-fit items-center gap-1 text-[9px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-bold uppercase tracking-wider" title="Transferencia Bancaria"><Landmark size={10}/> Transf.</div>;
@@ -19,7 +22,11 @@ const PaymentBadge = ({ method }: { method?: 'cash' | 'transfer' | 'online' }) =
 const AppointmentsView = ({ barberId }: { barberId: string }) => {
   const { appointments, services, loading, changeStatus, updateData, removeAppointment, addWalkIn } = useAppointments(barberId);
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const { searchTerm, setSearchTerm, filteredItems: filteredAppointments, isSearching } = useSearch<Appointment>(
+      appointments, 
+      ['clientName', 'id', 'date', 'time'] // El Barbero solo busca por estos campos
+  );
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null); 
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
@@ -108,13 +115,6 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
     }
   };
 
-  const filteredAppointments = appointments.filter((appt) => {
-    const term = searchTerm.toLowerCase();
-    return (appt.clientName?.toLowerCase().includes(term) || appt.id.toLowerCase().includes(term) || appt.date.includes(term));
-  });
-
-  const isSearching = searchTerm.length > 0;
-  
   const todayAppts = filteredAppointments.filter(a => isTodayLocal(a.date));
   const todayPending = todayAppts.filter(a => a.status !== 'completed' && a.status !== 'cancelled');
   const todayCompleted = todayAppts.filter(a => a.status === 'completed');
@@ -144,15 +144,12 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
     return (
     <div className={`flex flex-col h-full bg-bg-card rounded-xl border border-white/5 overflow-hidden transition-all shadow-lg group ${isDimmed || isCompleted ? 'opacity-60 hover:opacity-100 grayscale hover:grayscale-0' : 'hover:-translate-y-1 hover:border-gold/30'}`}>
         
-        {/* --- HEADER DE LA TARJETA CON BOTONES RÁPIDOS --- */}
         <div className="bg-white/5 p-4 flex justify-between items-center shrink-0">
             <div className="flex items-center gap-2 text-xl font-black text-white">
                 <Clock className="text-gold" size={20} />{appt.time}
             </div>
             
             <div className="flex items-center gap-3">
-                {/* BOTONES DE EDICIÓN Y ELIMINACIÓN RÁPIDA */}
-                {/* AHORA VISIBLES PARA CITAS RÁPIDAS Y REALIZADAS */}
                 {appt.status !== 'cancelled' && (
                     <div className="flex items-center gap-2 mr-2 border-r border-white/10 pr-3">
                         <button onClick={() => setEditingAppt(appt)} className="text-txt-muted hover:text-amber-400 transition-colors p-1" title="Editar cita">
@@ -170,7 +167,6 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
             </div>
         </div>
 
-        {/* --- CUERPO DE LA TARJETA --- */}
         <div className="p-5 flex flex-col grow">
             <h3 className="text-lg font-bold text-txt-main mb-3">{appt.clientName}</h3>
             
@@ -219,7 +215,6 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
             </div>
         </div>
 
-        {/* --- FOOTER Y CONTROLES DE ESTADO --- */}
         <div className="flex flex-col shrink-0">
             {!appt.isWalkIn && (
                 <div className="grid grid-cols-2 border-t border-white/5 divide-x divide-white/5">
@@ -230,8 +225,6 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
             
             <div className="relative border-t border-white/5 bg-black/20">
                 <div className={`absolute bottom-full left-0 w-full flex flex-col bg-bg-card/95 backdrop-blur-md border-t border-white/10 shadow-[0_-15px_40px_rgba(0,0,0,0.8)] transition-all duration-300 ease-out z-10 ${openDropdownId === appt.id ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-4 opacity-0 pointer-events-none'}`}>
-                    
-                    {/* MENÚ DE ESTADOS EXCLUSIVO PARA CAMBIAR EL STATUS */}
                     
                     {appt.status !== 'pending' && !isCompleted && appt.status !== 'cancelled' && (
                         <button onClick={(e) => { e.stopPropagation(); handleStatusChange(appt.id, 'pending'); }} className="p-4 flex items-center gap-2 text-xs font-bold text-yellow-400 hover:bg-yellow-500/10 border-b border-white/5 transition-colors">
@@ -251,13 +244,12 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
                         </button>
                     )}
                     
-                    {/* NUEVO BOTÓN DE CANCELAR RESERVA */}
                     {appt.status !== 'cancelled' && !isCompleted && (
                         <button onClick={(e) => { 
                             e.stopPropagation(); 
-                            setCancellingAppt(appt); // Abre el modal en vez del confirm
+                            setCancellingAppt(appt); 
                             setOpenDropdownId(null);
-                        }} className="p-4 flex items-center gap-2 text-xs font-bold text-red-400 hover:bg-red-500/10 transition-colors">
+                        }} className="p-4 flex items-center gap-2 text-xs font-bold text-error hover:bg-error/10 transition-colors">
                             <X size={16}/> Cancelar Reserva
                         </button>
                     )}
@@ -283,16 +275,21 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
       
-      {/* BUSCADOR */}
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-5 w-5 text-txt-muted" /></div>
-        <input type="text" placeholder="Buscar por cliente o fecha..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-10 pr-3 py-3 border border-white/10 rounded-xl bg-bg-card text-txt-main placeholder-txt-muted focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all" />
-      </div>
+      <SearchBar 
+        value={searchTerm} 
+        onChange={setSearchTerm} 
+        placeholder="Buscar por nombre, ID o fecha..." 
+      />
 
       {filteredAppointments.length === 0 ? (
         <div className="text-center py-20 opacity-50 bg-bg-card rounded-xl border border-white/5 border-dashed"><p className="text-txt-main font-bold">No hay reservas encontradas</p></div>
       ) : isSearching ? (
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">{filteredAppointments.map(appt => <AppointmentCard key={appt.id} appt={appt} />)}</div>
+         // --- USAMOS EL NUEVO COMPONENTE COMPARTIDO ---
+         <SearchResultsDisplay 
+            appointments={filteredAppointments} 
+            searchTerm={searchTerm} 
+            renderCard={(appt) => <AppointmentCard appt={appt} />}
+         />
       ) : (
         <div className="space-y-12">
             <section>
@@ -416,7 +413,7 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
                                   <span className="text-sm font-bold text-white block">Bloquear Hora en Web</span>
                                   <span className="text-[10px] text-txt-muted uppercase mt-1 block leading-tight">Evita que alguien reserve online<br/>a esta hora exacta</span>
                               </div>
-                              <div className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 shrink-0 ${walkInForm.blockSchedule ? 'bg-red-500' : 'bg-white/10'}`}>
+                              <div className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 shrink-0 ${walkInForm.blockSchedule ? 'bg-error' : 'bg-white/10'}`}>
                                   <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${walkInForm.blockSchedule ? 'translate-x-6' : 'translate-x-0'}`} />
                               </div>
                           </div>
@@ -452,7 +449,6 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
           />
       )}
 
-      {/* MODAL PARA CANCELAR CITA (STATUS) */}
       <ConfirmModal 
           isOpen={cancellingAppt !== null}
           title="¿Cancelar Reserva?"
@@ -465,7 +461,7 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
           onConfirm={() => {
               if (cancellingAppt) {
                   handleStatusChange(cancellingAppt.id, 'cancelled');
-                  setCancellingAppt(null); // Lo cerramos inmediatamente, el loader general del botón de status hará el resto
+                  setCancellingAppt(null); 
               }
           }}
       />
