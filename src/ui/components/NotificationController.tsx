@@ -1,22 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { collection, query, where, onSnapshot, doc, getDocs } from "firebase/firestore";
 import { db } from "../../core/firebase/config";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
 const NotificationController = () => {
-  const { user, role } = useAuth();
+  const { user, role, linkedBarberId } = useAuth(); // Usamos el linkedBarberId si existe
   const { toast } = useToast();
   
   const [prefs, setPrefs] = useState({ newBooking: true, cancellation: true });
-  
-  // NUEVO ESTADO: Para guardar el ID real de la base de datos
   const [realBarberId, setRealBarberId] = useState<string | null>(null);
+  
+  // MEMORIA ANTI-DUPLICADOS: Guarda los IDs de citas que ya notificamos
+  const notifiedAppts = useRef<Set<string>>(new Set());
 
-  // 1. BUSCAR EL ID REAL DEL BARBERO POR EMAIL
+  // 1. BUSCAR EL ID REAL DEL BARBERO POR EMAIL (o usar el del AuthContext)
   useEffect(() => {
-    if (!user || role !== 'barber' || !user.email) return;
+    if (!user || (role !== 'barber' && role !== 'admin') || !user.email) return;
 
+    // Si ya lo tenemos en el contexto por el registro enlazado, lo usamos directo
+    if (linkedBarberId) {
+      setRealBarberId(linkedBarberId);
+      return;
+    }
+
+    // Si no, lo buscamos en Firestore (para barberos creados de la forma antigua)
     const findRealBarberId = async () => {
       try {
         const q = query(collection(db, "barbers"), where("email", "==", user.email));
@@ -24,8 +32,6 @@ const NotificationController = () => {
         
         if (!querySnapshot.empty) {
           setRealBarberId(querySnapshot.docs[0].id);
-        } else {
-          console.error("Notificaciones: No se encontró un barbero con el email", user.email);
         }
       } catch (error) {
         console.error("Error buscando ID de barbero:", error);
@@ -33,9 +39,9 @@ const NotificationController = () => {
     };
 
     findRealBarberId();
-  }, [user, role]);
+  }, [user, role, linkedBarberId]);
 
-  // 2. ESCUCHAR PREFERENCIAS DEL USUARIO (Usando el ID real)
+  // 2. ESCUCHAR PREFERENCIAS DEL USUARIO
   useEffect(() => {
     if (!realBarberId) return;
 
@@ -51,7 +57,7 @@ const NotificationController = () => {
     return () => unsubPrefs();
   }, [realBarberId]);
 
-  // 3. ESCUCHAR NUEVAS CITAS 
+  // 3. ESCUCHAR NUEVAS CITAS Y DISPARAR EL TOAST
   useEffect(() => {
     if (!realBarberId) return;
 
@@ -63,15 +69,29 @@ const NotificationController = () => {
     );
 
     const unsubAppts = onSnapshot(q, (snapshot) => {
+      // Evitamos notificar todo el historial al abrir la app
       if (isInitialLoad) {
           isInitialLoad = false;
+          snapshot.docs.forEach(doc => notifiedAppts.current.add(doc.id));
           return; 
       }
 
       snapshot.docChanges().forEach((change) => {
+          // Solo si es una cita NUEVA y el barbero quiere recibir notificaciones
           if (change.type === "added" && prefs.newBooking) {
+              const docId = change.doc.id;
               const data = change.doc.data();
-              toast.success(`¡Nueva reserva de ${data.clientName}!`);
+              
+              // Evitamos que las citas rápidas del Walk-in le avisen al mismo barbero que las acaba de crear
+              if (data.isWalkIn) return;
+
+              // VERIFICACIÓN ANTI-DUPLICADOS
+              if (!notifiedAppts.current.has(docId)) {
+                  notifiedAppts.current.add(docId); // Lo anotamos en memoria
+                  
+                  // Lanzamos el Toast visual con el texto que me pediste
+                  toast.success(`${data.clientName} ha reservado`);
+              }
           }
       });
     });
@@ -79,6 +99,7 @@ const NotificationController = () => {
     return () => unsubAppts();
   }, [realBarberId, prefs, toast]);
 
+  // Este componente es invisible, solo ejecuta lógica en segundo plano
   return null; 
 };
 

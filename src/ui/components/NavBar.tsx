@@ -131,6 +131,7 @@ const Navbar = () => {
             {(!user || role === 'client') && (
               <Link 
                 to="/book" 
+                onClick={() => setIsOpen(false)}
                 className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
               >
                 Reservar Cita
@@ -141,6 +142,7 @@ const Navbar = () => {
             {(role === 'barber') && (
               <Link 
                 to="/barber" 
+                onClick={() => setIsOpen(false)}
                 className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
               >
                 Panel de Barbero
@@ -151,6 +153,7 @@ const Navbar = () => {
             {(role === 'admin') && (
               <Link 
                 to="/admin" 
+                onClick={() => setIsOpen(false)}
                 className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
               >
                 Panel Admin

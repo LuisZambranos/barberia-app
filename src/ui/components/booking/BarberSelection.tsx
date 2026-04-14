@@ -3,7 +3,6 @@ import { useBooking } from '../../context/BookingContext';
 import { type Barber } from '../../../core/models/Barber';
 import { getAllBarbers } from '../../../core/services/barber.service';
 
-// Dejamos la función de mezclar aquí porque es lógica de visualización (UI)
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
@@ -22,9 +21,12 @@ export const BarberSelection = () => {
     const fetchBarbers = async () => {
       setLoading(true);
       try {
-        // Llamamos al servicio limpio del Core
         const loadedBarbers = await getAllBarbers();
-        setBarbers(shuffleArray(loadedBarbers));
+        
+        // AQUI ESTÁ LA MAGIA: Filtramos solo los activos antes de mezclarlos
+        const activeBarbers = loadedBarbers.filter(b => b.active);
+        
+        setBarbers(shuffleArray(activeBarbers));
       } catch (e) { 
         console.error("Error cargando barberos:", e); 
       } finally {
@@ -46,8 +48,8 @@ export const BarberSelection = () => {
     <div className="w-full animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {barbers.map(b => {
-          // Generamos un avatar por defecto elegante si el barbero aún no sube su foto
           const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(b.name)}&background=1e293b&color=D4AF37&size=300`;
+          const displayName = b.name.replace(/PRUEBA|Barbero 1/gi, '').trim() || "Profesional";
           
           return (
             <div 
@@ -57,16 +59,15 @@ export const BarberSelection = () => {
             >
               <div className="mb-4 w-full aspect-square max-w-[120px] bg-bg-main border border-white/10 rounded-2xl mx-auto overflow-hidden shadow-lg">
                 <img 
-                  // AQUÍ ESTÁ LA MAGIA: Lee de ImgBB, si no hay usa la antigua, si no usa el Fallback
                   src={b.photoUrl || b.image || fallbackAvatar} 
-                  alt={b.name} 
+                  alt={displayName} 
                   className="w-full h-full object-cover object-top transition-transform duration-500 hover:scale-110" 
                   style={{ imageRendering: '-webkit-optimize-contrast' }} 
                 />
               </div>
 
               <div>
-                <h3 className="font-bold text-sm md:text-lg mb-1 text-txt-main uppercase tracking-tight leading-tight">{b.name.replace("PRUEBA", "")}</h3>
+                <h3 className="font-bold text-sm md:text-lg mb-1 text-txt-main uppercase tracking-tight leading-tight">{displayName}</h3>
                 <p className="text-txt-muted text-[10px] leading-tight hidden sm:block">{b.specialty}</p>
               </div>
               {selectedBarber?.id === b.id && (<div className="mt-3 w-3 h-3 bg-gold rounded-full animate-bounce"></div>)}
@@ -77,7 +78,7 @@ export const BarberSelection = () => {
       
       <div className="flex flex-col sm:flex-row gap-4 border-t border-white/10 mt-6 pt-6 max-w-4xl mx-auto">
         <button onClick={() => setStep(3)} disabled={!selectedBarber} className="sm:w-3/4 bg-gold text-bg-main p-4 rounded-sm font-black text-sm uppercase tracking-[0.2em] disabled:opacity-30 shadow-xl shadow-gold/20 hover:bg-gold-hover transition-all">
-          Ver Agenda de {selectedBarber?.name.split(' ')[0] || "Barbero"}
+          Ver Agenda de {selectedBarber?.name.replace(/PRUEBA|Barbero 1/gi, '').trim().split(' ')[0] || "Profesional"}
         </button>
         <button onClick={() => setStep(1)} className="sm:w-1/4 border border-white/20 p-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all">
           Regresar
