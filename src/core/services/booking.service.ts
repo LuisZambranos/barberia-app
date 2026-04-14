@@ -4,6 +4,7 @@ import type { Service } from "../models/Service";
 import type { Barber } from "../models/Barber";
 import type { Appointment,PaymentMethodType } from "../models/Appointment";
 import { sendReviewEmail, sendConfirmationEmail, sendCancellationEmail } from "./email.service";
+import { sendPushAlert } from "./notification.service";
 
 
 interface BookingData {
@@ -95,6 +96,23 @@ export const createAppointment = async (data: BookingData): Promise<string> => {
 
       return shortId;
     });
+
+    // --- NUEVO: DISPARAR LA NOTIFICACIÓN PUSH AL BARBERO ---
+    try {
+      const barberDoc = await getDoc(doc(db, "barbers", data.barber.id));
+      if (barberDoc.exists() && barberDoc.data().fcmToken) {
+        const token = barberDoc.data().fcmToken;
+        await sendPushAlert(
+          token, 
+          "¡Nueva Reserva Recibida! ✂️", 
+          `${data.client.name} ha agendado un ${data.service.name} para el ${data.date} a las ${data.time}.`
+        );
+      }
+    } catch (pushError) {
+      console.error("La cita se creó, pero falló el envío del Push:", pushError);
+      // No lanzamos el error para no arruinarle la reserva al cliente si el Push falla
+    }
+    // --- FIN NUEVO ---
 
     return resultId;
 
