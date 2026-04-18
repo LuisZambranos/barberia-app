@@ -1,8 +1,28 @@
-import { Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { FaInstagram, FaFacebookF, FaTiktok } from 'react-icons/fa6';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
+    e.preventDefault();
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        const element = document.querySelector(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 150);
+    } else {
+      const element = document.querySelector(hash);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
 
   return (
     <footer className="bg-bg-main border-t border-txt-muted/10 pt-16 pb-8 px-4 md:px-8 mt-auto relative overflow-hidden">
@@ -10,7 +30,7 @@ const Footer = () => {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-gold/5 blur-[100px] rounded-full pointer-events-none"></div>
 
       <div className="max-w-6xl mx-auto relative z-10">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+        <div className="flex flex-col md:flex-row justify-between items-center md:items-start gap-8 mb-12">
           
           {/* Logo y Descripción */}
           <div className="text-center md:text-left max-w-sm">
@@ -22,6 +42,16 @@ const Footer = () => {
             <p className="text-txt-muted text-sm leading-relaxed">
               Elevando el estándar de la barbería clásica y moderna. Tu imagen es nuestra obra maestra.
             </p>
+          </div>
+
+          {/* Enlaces Rápidos */}
+          <div className="hidden md:flex flex-col items-center md:items-start gap-2">
+            <p className="text-[10px] text-txt-secondary uppercase tracking-[0.2em] font-bold mb-2">Secciones</p>
+            <a href="#servicios" onClick={(e) => handleNavClick(e, '#servicios')} className="text-txt-muted hover:text-gold text-sm transition-colors">Servicios</a>
+            <a href="#barberos" onClick={(e) => handleNavClick(e, '#barberos')} className="text-txt-muted hover:text-gold text-sm transition-colors">Equipo</a>
+            <a href="#local" onClick={(e) => handleNavClick(e, '#local')} className="text-txt-muted hover:text-gold text-sm transition-colors">Local</a>
+            <a href="#galeria" onClick={(e) => handleNavClick(e, '#galeria')} className="text-txt-muted hover:text-gold text-sm transition-colors">Galería</a>
+            <a href="#ubicacion" onClick={(e) => handleNavClick(e, '#ubicacion')} className="text-txt-muted hover:text-gold text-sm transition-colors">Ubicación</a>
           </div>
 
           {/* Redes Sociales */}

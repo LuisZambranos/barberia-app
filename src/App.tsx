@@ -10,6 +10,7 @@ import Login from "./ui/pages/Login";
 import Admin from "./ui/pages/Admin";
 import BarberPage from "./ui/pages/BarberPage";
 import NotFound from "./ui/pages/NotFound";
+import MyAppointments from "./ui/pages/MyAppointments";
 import NotificationController from './ui/components/NotificationController';
 
 function App() {
@@ -33,6 +34,11 @@ function App() {
                 {/* Rutas Protegidas */}
                 <Route element={<ProtectedRoute allowedRoles={['client', 'admin', 'barber']} />}>
                   <Route path="book" element={<Booking />}/>
+                </Route>
+
+                {/* Portal Mis Reservas (Solo Cliente) */}
+                <Route element={<ProtectedRoute allowedRoles={['client']} />}>
+                  <Route path="mis-citas" element={<MyAppointments />}/>
                 </Route>
 
                 {/* Rutas de Staff */}

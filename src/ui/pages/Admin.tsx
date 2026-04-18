@@ -1,11 +1,11 @@
 import { useState } from "react";
 import AdminBookings from "../components/admin/AdminBookings";
 import AdminSchedule from "../components/admin/AdminSchedule";
-import AdminBarbers from "../components/admin/AdminBarbers"; // <-- 1. NUEVA IMPORTACIÓN
+import AdminBarbers from "../components/admin/AdminBarbers"; 
+import AdminGallery from "../components/admin/AdminGallery";
 
 const Admin = () => {
-  // 2. AÑADIMOS 'barbers' AL ESTADO
-  const [activeTab, setActiveTab] = useState<'bookings' | 'schedule' | 'barbers'>('bookings'); 
+  const [activeTab, setActiveTab] = useState<'bookings' | 'schedule' | 'barbers' | 'gallery'>('bookings'); 
 
   return (
     <div className="min-h-screen bg-bg-main text-txt-main p-4 sm:p-8 pt-22 md:pt-24">
@@ -48,6 +48,18 @@ const Admin = () => {
         >
           Barberos y Staff
         </button>
+
+        {/* PESTAÑA: GALERÍA */}
+        <button 
+          onClick={() => setActiveTab('gallery')}
+          className={`px-4 py-2 font-bold rounded-t-md transition-all whitespace-nowrap ${
+            activeTab === 'gallery' 
+              ? 'text-gold border-b-2 border-gold bg-white/5' 
+              : 'text-txt-muted hover:text-white hover:bg-white/5'
+          }`}
+        >
+          Galería
+        </button>
       </div>
 
       {/* 4. RENDERIZADO CONDICIONAL (Fondo corregido para contraste) */}
@@ -55,6 +67,7 @@ const Admin = () => {
         {activeTab === 'bookings' && <AdminBookings />}
         {activeTab === 'schedule' && <AdminSchedule />}
         {activeTab === 'barbers' && <AdminBarbers />} 
+        {activeTab === 'gallery' && <AdminGallery />}
       </div>
     </div>
   );

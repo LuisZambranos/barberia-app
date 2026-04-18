@@ -3,12 +3,33 @@ import { Link } from 'react-router-dom';
 import { useAuth } from "../context/AuthContext";
 import { signOut } from "firebase/auth";
 import { auth } from "../../core/firebase/config";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, role, userName } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
+    e.preventDefault();
+    setIsOpen(false);
+    
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        const element = document.querySelector(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 150);
+    } else {
+      const element = document.querySelector(hash);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -46,9 +67,11 @@ const Navbar = () => {
             {/* NAVEGACIÓN ESCRITORIO  */}
           <nav className="hidden md:flex space-x-8 items-center">
             <Link to="/" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Inicio</Link>
-            <a href="#servicios" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Servicios</a>
-            <a href="#barberos" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Equipo</a>
-            <a href="#ubicacion" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Ubicación</a>
+            <a href="#servicios" onClick={(e) => handleNavClick(e, '#servicios')} className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Servicios</a>
+            <a href="#barberos" onClick={(e) => handleNavClick(e, '#barberos')} className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Equipo</a>
+            <a href="#local" onClick={(e) => handleNavClick(e, '#local')} className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Local</a>
+            <a href="#galeria" onClick={(e) => handleNavClick(e, '#galeria')} className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Galería</a>
+            <a href="#ubicacion" onClick={(e) => handleNavClick(e, '#ubicacion')} className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">Ubicación</a>
             
             {/* GESTIÓN DE SESIÓN */ }
             {user ? (
@@ -66,6 +89,16 @@ const Navbar = () => {
             ) : (
               <Link to="/login" className="text-txt-main hover:text-gold transition-colors text-sm uppercase tracking-wide font-medium">
                 Iniciar Sesión
+              </Link>
+            )}
+
+            {/* ENLACE RESALTADO: Mis Reservas (Solo Cliente) */}
+            {user && role === 'client' && (
+              <Link 
+                to="/mis-citas" 
+                className="text-gold border border-gold/50 hover:bg-gold/10 px-4 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all shadow-[0_0_10px_rgba(212,175,55,0.2)]"
+              >
+                Mis Reservas
               </Link>
             )}
 
@@ -124,15 +157,29 @@ const Navbar = () => {
         <div className="md:hidden bg-bg-card border-t border-white/10 absolute w-full">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 flex flex-col items-center py-4">
             <Link to="/" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={() => setIsOpen(false)}>INICIO</Link>
-            <a href="#servicios" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={() => setIsOpen(false)}>SERVICIOS</a>
-            <a href="#barberos" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={() => setIsOpen(false)}>EQUIPO</a>
+            <a href="#servicios" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={(e) => handleNavClick(e, '#servicios')}>SERVICIOS</a>
+            <a href="#barberos" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={(e) => handleNavClick(e, '#barberos')}>EQUIPO</a>
+            <a href="#local" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={(e) => handleNavClick(e, '#local')}>LOCAL</a>
+            <a href="#galeria" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={(e) => handleNavClick(e, '#galeria')}>GALERÍA</a>
+            <a href="#ubicacion" className="text-txt-main hover:text-gold block px-3 py-2 text-base font-medium" onClick={(e) => handleNavClick(e, '#ubicacion')}>UBICACIÓN</a>
             
+            {/* ENLACE RESALTADO: Mis Reservas (Solo Cliente) */}
+            {user && role === 'client' && (
+              <Link 
+                to="/mis-citas" 
+                onClick={() => setIsOpen(false)}
+                className="text-gold border border-gold/50 hover:bg-gold/10 px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all text-center w-full max-w-[200px]"
+              >
+                Mis Reservas
+              </Link>
+            )}
+
             {/* BOTÓN DE ACCIÓN: Visible si no hay usuario (anonimo) O si es cliente */}
             {(!user || role === 'client') && (
               <Link 
                 to="/book" 
                 onClick={() => setIsOpen(false)}
-                className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105"
+                className="bg-gold hover:bg-gold-hover text-bg-main px-6 py-2 rounded-sm font-bold uppercase tracking-wider text-sm transition-all transform hover:scale-105 mt-2"
               >
                 Reservar Cita
               </Link>
