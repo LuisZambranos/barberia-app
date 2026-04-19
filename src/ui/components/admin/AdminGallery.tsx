@@ -15,6 +15,8 @@ export default function AdminGallery() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<GalleryImage | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [errorModalMessage, setErrorModalMessage] = useState<string>('');
 
   useEffect(() => {
     fetchImages();
@@ -44,7 +46,7 @@ export default function AdminGallery() {
       const newImg = await addGalleryImage(url, filterType);
       setImages(prev => [newImg, ...prev]);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Error al subir la imagen");
+      setErrorModalMessage(error instanceof Error ? error.message : "Error al subir la imagen");
     } finally {
       setIsUploading(false);
       // Reset input
@@ -164,6 +166,17 @@ export default function AdminGallery() {
         isLoading={isDeleting}
         onConfirm={confirmDelete}
         onClose={() => setDeleteModalOpen(false)}
+      />
+
+      <ConfirmModal
+        isOpen={!!errorModalMessage}
+        title="Aviso de Galería"
+        message={errorModalMessage}
+        type="warning"
+        confirmText="Aceptar"
+        hideCancel={true}
+        onConfirm={() => setErrorModalMessage('')}
+        onClose={() => setErrorModalMessage('')}
       />
     </div>
   );

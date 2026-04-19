@@ -8,6 +8,7 @@ interface ConfirmModalProps {
     cancelText?: string;
     type?: 'danger' | 'warning' | 'info';
     isLoading?: boolean;
+    hideCancel?: boolean;
     onConfirm: () => void;
     onClose: () => void;
 }
@@ -20,6 +21,7 @@ export const ConfirmModal = ({
     cancelText = "Cancelar", 
     type = 'warning',
     isLoading = false,
+    hideCancel = false,
     onConfirm, 
     onClose 
 }: ConfirmModalProps) => {
@@ -81,14 +83,16 @@ export const ConfirmModal = ({
                 </div>
 
                 <div className="p-4 border-t border-white/10 flex flex-col sm:flex-row gap-3 bg-black/20">
-                    {/* Botón Secundario (El que ahora será rojo en caso de danger) */}
-                    <button 
-                        onClick={onClose} 
-                        disabled={isLoading}
-                        className={`flex-1 p-3 rounded-lg border font-bold text-sm transition-colors disabled:opacity-50 ${theme.btnSecondaryClass}`}
-                    >
-                        {cancelText}
-                    </button>
+                    {/* Botón Secundario */}
+                    {!hideCancel && (
+                        <button 
+                            onClick={onClose} 
+                            disabled={isLoading}
+                            className={`flex-1 p-3 rounded-lg border font-bold text-sm transition-colors disabled:opacity-50 ${theme.btnSecondaryClass}`}
+                        >
+                            {cancelText}
+                        </button>
+                    )}
                     {/* Botón Principal (Acción Destructiva) */}
                     <button 
                         onClick={onConfirm} 

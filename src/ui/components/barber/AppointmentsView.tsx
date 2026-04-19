@@ -118,7 +118,7 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
   const todayAppts = filteredAppointments.filter(a => isTodayLocal(a.date));
   const todayPending = todayAppts.filter(a => a.status !== 'completed' && a.status !== 'cancelled');
   const todayCompleted = todayAppts.filter(a => a.status === 'completed');
-  const futureAppts = filteredAppointments.filter(a => !isTodayLocal(a.date) && !isPastLocal(a.date, a.time));
+  const futureAppts = filteredAppointments.filter(a => !isTodayLocal(a.date) && !isPastLocal(a.date, a.time) && a.status !== 'cancelled' && a.status !== 'completed');
 
   const groupedFuture = futureAppts.reduce((acc, appt) => {
       if (!acc[appt.date]) acc[appt.date] = [];

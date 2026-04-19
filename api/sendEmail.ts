@@ -255,6 +255,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         htmlContent = buildHTML(bodyContent);
         break;
 
+      case 'upcoming_4h':
+        subject = '⏳ Tu cita en AJ Studio es en unas horas';
+        bodyContent = `
+          <h2>Hola ${appointmentData?.clientName},</h2>
+          <p>Te recordamos que tienes una cita <strong style="color: #2ecc71 !important;">CONFIRMADA</strong> en aproximadamente 4 horas.</p>
+          ${appointmentDetailsHTML}
+          <p>¡Te esperamos! Si tienes algún inconveniente de última hora, por favor avísanos lo antes posible a través de WhatsApp.</p>
+          ${wsButtonHTML}
+          ${policyHTML}
+        `;
+        htmlContent = buildHTML(bodyContent);
+        break;
+
       case 'reminder':
         const resolvedName = clientName || 'Cliente';
         subject = '💈 ¡Ya toca un retoque! ✂️';
