@@ -62,16 +62,19 @@ export default async function handler(req: any, res: any) {
       .where("lastVisitDate", "<=", endOfDay)
       .get();
 
-    const clientsToEmail = snapshot.docs.map(doc => doc.data());
     let sentCount = 0;
 
-    if (clientsToEmail.length > 0) {
+    if (!snapshot.empty) {
       const apiUrl = process.env.VERCEL_URL 
         ? `https://${process.env.VERCEL_URL}/api/sendEmail` 
         : `http://127.0.0.1:3000/api/sendEmail`;
 
-      for (const client of clientsToEmail) {
+      for (const doc of snapshot.docs) {
+        const client = doc.data();
         if (!client.email || !client.name) continue;
+        
+        // Prevenir envíos múltiples el mismo día
+        if (client.reminder15DaysSent) continue;
 
         const firstName = client.name.split(' ')[0];
 
@@ -84,6 +87,9 @@ export default async function handler(req: any, res: any) {
             type: 'reminder' 
           }),
         });
+        
+        // Marcar para no volver a enviar
+        await doc.ref.update({ reminder15DaysSent: true });
         sentCount++;
       }
     }
@@ -166,11 +172,76 @@ export default async function handler(req: any, res: any) {
     }
 
     // ==========================================
+    // 4. TAREA: RECORDATORIOS DE 1 HORA ANTES
+    // ==========================================
+    const targetTime1h = new Date(santiagoTime.getTime() + 1 * 60 * 60 * 1000); // +1 hora
+    const targetDateString1h = `${targetTime1h.getFullYear()}-${String(targetTime1h.getMonth() + 1).padStart(2, '0')}-${String(targetTime1h.getDate()).padStart(2, '0')}`;
+    const targetHour1h = targetTime1h.getHours();
+
+    const apptsSnapshot1h = await appointmentsRef
+      .where("date", "==", targetDateString1h)
+      .where("status", "==", "confirmed")
+      .get();
+
+    let reminder1hCount = 0;
+
+    if (!apptsSnapshot1h.empty) {
+      const apiUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}/api/sendEmail` 
+        : `http://127.0.0.1:3000/api/sendEmail`;
+
+      for (const doc of apptsSnapshot1h.docs) {
+        const appt = doc.data();
+        
+        // Evitar dobles envíos
+        if (appt.reminder1hSent) continue;
+
+        // Validar que la hora coincida con targetHour1h
+        if (!appt.time) continue;
+        const [hourStr] = appt.time.split(':');
+        const apptHour = parseInt(hourStr, 10);
+
+        if (apptHour === targetHour1h) {
+          let barberPhone = '';
+          if (appt.barberId) {
+            const barberDoc = await db.collection("barbers").doc(appt.barberId).get();
+            if (barberDoc.exists) {
+              barberPhone = barberDoc.data()?.phone || '';
+            }
+          }
+
+          if (appt.clientEmail) {
+            await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                to: appt.clientEmail, 
+                type: 'upcoming_1h',
+                appointmentData: {
+                  clientName: appt.clientName,
+                  barberName: appt.barberName,
+                  date: appt.date,
+                  time: appt.time,
+                  serviceName: appt.serviceName,
+                  barberPhone: barberPhone
+                }
+              }),
+            });
+          }
+
+          // Marcar como enviado
+          await doc.ref.update({ reminder1hSent: true });
+          reminder1hCount++;
+        }
+      }
+    }
+
+    // ==========================================
     // REPORTE FINAL
     // ==========================================
     return res.status(200).json({ 
         success: true, 
-        message: `Cron finalizado con éxito. Se barrieron ${deletedLocksCount} candados fantasma, se enviaron ${sentCount} correos de 15 días y ${reminder4hCount} recordatorios de 4 horas.` 
+        message: `Cron finalizado con éxito. Se barrieron ${deletedLocksCount} candados fantasma, se enviaron ${sentCount} correos de 15 días, ${reminder4hCount} recordatorios de 4 horas y ${reminder1hCount} recordatorios de 1 hora.` 
     });
 
   } catch (error) {
