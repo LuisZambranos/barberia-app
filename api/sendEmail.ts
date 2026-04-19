@@ -249,7 +249,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           <p>Esperamos que hayas disfrutado tu servicio de <strong>${appointmentData?.serviceName}</strong> con ${appointmentData?.barberName}.</p>
           <p>Para nosotros es muy importante seguir mejorando. ¿Qué tal te pareció la experiencia?</p>
           <div style="text-align: center; margin-top: 20px;">
-            <a href="https://g.page/r/tu-enlace-de-google/review" class="btn btn-gold">Calificar Servicio ⭐⭐⭐⭐⭐</a>
+            <a href="https://maps.app.goo.gl/3AWDEY7wg1rSLfj49" class="btn btn-gold">Calificar Servicio ⭐⭐⭐⭐⭐</a>
           </div>
         `;
         htmlContent = buildHTML(bodyContent);
