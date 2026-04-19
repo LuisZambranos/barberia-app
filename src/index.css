@@ -96,10 +96,42 @@ body {
   to { width: 0%; }
 }
 
+@keyframes bounce-x {
+  0%, 100% {
+    transform: translateX(0);
+    animation-timing-function: cubic-bezier(0.8,0,1,1);
+  }
+  50% {
+    transform: translateX(25%);
+    animation-timing-function: cubic-bezier(0,0,0.2,1);
+  }
+}
+
 .animate-toast-in {
   animation: toast-slide-in 0.5s cubic-bezier(0.17, 0.88, 0.32, 1.28) forwards;
 }
 
 .animate-progress-shrink {
   animation: toast-progress-shrink 3000ms linear forwards;
+}
+
+.animate-bounce-x {
+  animation: bounce-x 1s infinite;
+}
+
+/* Custom scrollbar para carruseles */
+.gold-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+.gold-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+.gold-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-accent);
+  border-radius: 10px;
+}
+.gold-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-accent) rgba(255, 255, 255, 0.05);
 }

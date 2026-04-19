@@ -15,7 +15,9 @@ export const isTodayLocal = (dateString: string) => {
 export const isPastLocal = (dateString: string, timeString: string) => {
     const now = new Date();
     // Parseamos la fecha del string asumiendo formato local (YYYY-MM-DDTHH:MM:00)
-    const apptDate = new Date(`${dateString}T${timeString}:00`);
+    const [hours, minutes] = timeString.split(':');
+    const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+    const apptDate = new Date(`${dateString}T${formattedTime}`);
     return apptDate < now;
 };
 

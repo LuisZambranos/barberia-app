@@ -433,3 +433,33 @@ export const createWalkInAppointment = async (data: {
     throw error;
   }
 };
+
+// --- FASE 3.1: PORTAL DEL CLIENTE ---
+export const subscribeToClientAppointments = (
+  clientId: string, 
+  onUpdate: (appointments: Appointment[]) => void
+) => {
+  const q = query(
+    collection(db, "appointments"), 
+    where("clientId", "==", clientId)
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const dbData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Appointment[];
+    
+    // ORDENAMIENTO CRONOLÓGICO (Fechas y Horas) ascendente
+    dbData.sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      
+      const parseTime = (timeStr: string) => {
+        if (!timeStr) return 0;
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes; 
+      };
+      
+      return parseTime(a.time) - parseTime(b.time);
+    });
+    
+    onUpdate(dbData);
+  });
+};

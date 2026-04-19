@@ -2,6 +2,8 @@ import Hero from '../components/Hero'; // Importamos el componente que acabamos 
 import Services from '../components/Services';
 import Team from '../components/Team';
 import LocationSection from '../components/LocationSection';
+import HaircutsGallery from '../components/HaircutsGallery';
+import LocalGallery from '../components/LocalGallery';
 
 const Home = () => {
   return (
@@ -19,6 +21,18 @@ const Home = () => {
 
       {/* 4 Sección Ubicación (Contenido) */} 
       <LocationSection />
+
+      {/* 5 Sección Galería del Local */}
+      <div id="local" className="scroll-mt-20">
+        <LocalGallery />
+      </div>
+
+      {/* 6 Sección Galería de Cortes */}
+      <div id="galeria" className="scroll-mt-20">
+        <HaircutsGallery />
+      </div>
+
+
     </div>
   );
 };

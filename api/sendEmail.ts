@@ -249,8 +249,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           <p>Esperamos que hayas disfrutado tu servicio de <strong>${appointmentData?.serviceName}</strong> con ${appointmentData?.barberName}.</p>
           <p>Para nosotros es muy importante seguir mejorando. ¿Qué tal te pareció la experiencia?</p>
           <div style="text-align: center; margin-top: 20px;">
-            <a href="https://g.page/r/tu-enlace-de-google/review" class="btn btn-gold">Calificar Servicio ⭐⭐⭐⭐⭐</a>
+            <a href="https://maps.app.goo.gl/3AWDEY7wg1rSLfj49" class="btn btn-gold">Calificar Servicio ⭐⭐⭐⭐⭐</a>
           </div>
+        `;
+        htmlContent = buildHTML(bodyContent);
+        break;
+
+      case 'upcoming_4h':
+        subject = '⏳ Tu cita en AJ Studio es en unas horas';
+        bodyContent = `
+          <h2>Hola ${appointmentData?.clientName},</h2>
+          <p>Te recordamos que tienes una cita <strong style="color: #2ecc71 !important;">CONFIRMADA</strong> en aproximadamente 4 horas.</p>
+          ${appointmentDetailsHTML}
+          <p>¡Te esperamos! Si tienes algún inconveniente de última hora, por favor avísanos lo antes posible a través de WhatsApp.</p>
+          ${wsButtonHTML}
+          ${policyHTML}
+        `;
+        htmlContent = buildHTML(bodyContent);
+        break;
+
+      case 'upcoming_1h':
+        subject = '🚨 Tu cita en AJ Studio es en 1 HORA';
+        bodyContent = `
+          <h2>Hola ${appointmentData?.clientName},</h2>
+          <p>Te recordamos que tienes una cita <strong style="color: #2ecc71 !important;">CONFIRMADA</strong> en aproximadamente 1 HORA.</p>
+          ${appointmentDetailsHTML}
+          <p>¡Te esperamos pronto! Recuerda nuestra política de tolerancia máxima de 10 minutos de retraso.</p>
+          ${wsButtonHTML}
+          ${policyHTML}
         `;
         htmlContent = buildHTML(bodyContent);
         break;
