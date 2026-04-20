@@ -9,17 +9,18 @@ interface EditModalProps {
     services: Service[];
     barbers?: Barber[]; // Opcional: Solo el Admin lo pasará
     onClose: () => void;
-    onSave: (id: string, date: string, time: string, payment: PaymentMethodType, service?: Service, barberId?: string) => Promise<void>;
+    onSave: (id: string, date: string, time: string, payment: PaymentMethodType, service?: Service, barberId?: string, status?: string) => Promise<void>;
     isUpdating: boolean;
 }
 
 export const EditAppointmentModal = ({ appt, services, barbers, onClose, onSave, isUpdating }: EditModalProps) => {
     const [form, setForm] = useState({
         date: appt.date,
-        time: appt.time,
+        time: appt.time.length === 4 ? `0${appt.time}` : appt.time,
         paymentMethod: appt.paymentMethod || 'cash',
         serviceId: appt.serviceId || '',
-        barberId: appt.barberId || ''
+        barberId: appt.barberId || '',
+        status: appt.status || 'pending'
     });
 
     const [showConfirmReassign, setShowConfirmReassign] = useState(false);
@@ -36,7 +37,7 @@ export const EditAppointmentModal = ({ appt, services, barbers, onClose, onSave,
 
     const finalizeSave = () => {
         const selectedSrv = services?.find(s => s.id === form.serviceId);
-        onSave(appt.id, form.date, form.time, form.paymentMethod, selectedSrv, form.barberId);
+        onSave(appt.id, form.date, form.time, form.paymentMethod, selectedSrv, form.barberId, form.status);
     };
 
     // PANTALLA DE DOBLE VERIFICACIÓN
@@ -106,6 +107,16 @@ export const EditAppointmentModal = ({ appt, services, barbers, onClose, onSave,
                             <option value="cash">Efectivo en Local</option>
                             <option value="transfer">Transferencia Bancaria</option>
                             <option value="online">Tarjeta / Redcompra</option>
+                        </select>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-txt-muted uppercase tracking-widest ml-1">Estado de la Cita</label>
+                        <select value={form.status} onChange={(e) => setForm({...form, status: e.target.value as 'pending' | 'confirmed' | 'cancelled' | 'completed'})} className="w-full bg-bg-main border border-white/5 p-4 text-txt-main text-xs outline-none focus:border-gold/50 transition-all rounded-sm">
+                            <option value="pending">Pendiente</option>
+                            <option value="confirmed">Confirmada</option>
+                            <option value="completed">Completada (Realizada)</option>
+                            <option value="cancelled">Cancelada</option>
                         </select>
                     </div>
 

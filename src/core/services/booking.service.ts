@@ -278,7 +278,8 @@ export const updateAppointmentData = async (
   newTime: string,
   newPaymentMethod: PaymentMethodType,
   newService?: Service,
-  newBarberName?: string // NUEVO: Recibe el nombre del nuevo barbero
+  newBarberName?: string, // NUEVO: Recibe el nombre del nuevo barbero
+  newStatus?: string // NUEVO: Permite editar el estado desde el modal
 ): Promise<void> => {
   try {
     const q = query(
@@ -306,6 +307,7 @@ export const updateAppointmentData = async (
     };
 
     if (newBarberName) updatePayload.barberName = newBarberName;
+    if (newStatus) updatePayload.status = newStatus;
 
     if (newService) {
         updatePayload.serviceId = newService.id;

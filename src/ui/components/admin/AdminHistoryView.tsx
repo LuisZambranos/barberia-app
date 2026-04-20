@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DollarSign, Search, ChevronDown, ChevronUp, CalendarDays, Scissors, Landmark, CreditCard, Wallet, User } from "lucide-react";
+import { DollarSign, Search, ChevronDown, ChevronUp, CalendarDays, Scissors, Landmark, CreditCard, Wallet, User, Edit2 } from "lucide-react";
 import { type Appointment } from "../../../core/models/Appointment"; 
 import { type Barber } from "../../../core/models/Barber"; 
 import { calculateMonthlyMetrics } from "../../../core/utils/metrics.utils";
@@ -31,9 +31,10 @@ const StatusBadge = ({ status }: { status: string }) => {
 interface Props {
   pastAppointments: Appointment[];
   barbers: Barber[]; // <-- AHORA RECIBE LOS BARBEROS PARA EXTRACCIÓN DINÁMICA
+  onEdit?: (appt: Appointment) => void;
 }
 
-export const AdminHistoryView = ({ pastAppointments, barbers }: Props) => {
+export const AdminHistoryView = ({ pastAppointments, barbers, onEdit }: Props) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
 
@@ -160,7 +161,18 @@ export const AdminHistoryView = ({ pastAppointments, barbers }: Props) => {
                                                                 </span>
                                                                 <StatusBadge status={appt.status} />
                                                             </div>
-                                                            <span className="text-xs font-black text-gold bg-gold/10 px-2 py-1 rounded">{appt.time}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                {onEdit && (
+                                                                    <button 
+                                                                        onClick={(e) => { e.stopPropagation(); onEdit(appt); }}
+                                                                        className="text-txt-muted hover:text-gold transition-colors p-1"
+                                                                        title="Editar Cita"
+                                                                    >
+                                                                        <Edit2 size={14} />
+                                                                    </button>
+                                                                )}
+                                                                <span className="text-xs font-black text-gold bg-gold/10 px-2 py-1 rounded">{appt.time}</span>
+                                                            </div>
                                                         </div>
 
                                                         <div className="flex flex-col gap-1 mb-4">

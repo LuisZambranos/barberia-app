@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
-import { DollarSign, Search, Loader2, ChevronDown, ChevronUp, CalendarDays, Scissors, Landmark, CreditCard, Wallet } from "lucide-react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { db } from "../../../core/firebase/config";
-import { type Appointment } from "../../../core/models/Appointment"; 
-import { calculateMonthlyMetrics } from "../../../core/utils/metrics.utils"; // <-- IMPORTACIÓN NUEVA
+import { useState } from "react";
+import { DollarSign, Search, Loader2, ChevronDown, ChevronUp, CalendarDays, Scissors, Landmark, CreditCard, Wallet, Edit2 } from "lucide-react";
+import { type Appointment, type PaymentMethodType } from "../../../core/models/Appointment"; 
+import { calculateMonthlyMetrics } from "../../../core/utils/metrics.utils";
+import { useAppointments } from "../../hooks/useAppointments";
+import { EditAppointmentModal } from "../shared/EditAppointmentModal";
 
 // --- HELPERS UX ---
 const isPastDay = (dateString: string) => {
@@ -39,31 +39,31 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 const HistoryView = ({ barberId }: { barberId: string }) => {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { appointments, services, loading, updateData } = useAppointments(barberId);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
   const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
+  
+  const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!barberId) return;
+  const pastData = appointments.filter(a => isPastDay(a.date));
+  pastData.sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.time.localeCompare(a.time);
+  });
 
-    const q = query(collection(db, "appointments"), where("barberId", "==", barberId));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const dbData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Appointment[];
-      const pastData = dbData.filter(a => isPastDay(a.date));
-      
-      pastData.sort((a, b) => {
-        if (a.date !== b.date) return b.date.localeCompare(a.date);
-        return b.time.localeCompare(a.time);
-      });
-
-      setAppointments(pastData);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [barberId]);
+  const handleEditSave = async (id: string, newDate: string, newTime: string, newPayment: PaymentMethodType, newService?: any, _newBarberId?: string, newStatus?: string) => {
+      setUpdatingId(id);
+      try {
+          await updateData(id, newDate, newTime, newPayment, newService, newStatus);
+          setEditingAppt(null);
+      } catch (error: any) {
+          if (error.message === "HORA_OCUPADA") alert("Ese horario ya está ocupado por otra reserva.");
+          else alert("Error al actualizar la cita.");
+      } finally {
+          setUpdatingId(null);
+      }
+  };
 
   const toggleMonth = (month: string) => {
       setExpandedMonths(prev => 
@@ -71,7 +71,7 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
       );
   };
 
-  const filteredAppointments = appointments.filter((appt) => {
+  const filteredAppointments = pastData.filter((appt) => {
     const term = searchTerm.toLowerCase();
     return (appt.clientName?.toLowerCase().includes(term) || appt.id.toLowerCase().includes(term) || appt.date.includes(term));
   });
@@ -176,7 +176,16 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
                                                             </div>
                                                             <p className="text-xs text-txt-muted flex items-center gap-1"><Scissors size={12} className="text-gold/50"/> {appt.serviceName}</p>
                                                         </div>
-                                                        <span className="text-xs font-black text-gold bg-gold/10 px-2 py-1 rounded">{appt.time}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); setEditingAppt(appt); }}
+                                                                className="text-txt-muted hover:text-gold transition-colors p-1"
+                                                                title="Editar Cita"
+                                                            >
+                                                                <Edit2 size={14} />
+                                                            </button>
+                                                            <span className="text-xs font-black text-gold bg-gold/10 px-2 py-1 rounded">{appt.time}</span>
+                                                        </div>
                                                     </div>
                                                     
                                                     <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-auto">
@@ -195,6 +204,16 @@ const HistoryView = ({ barberId }: { barberId: string }) => {
                 );
             })}
         </div>
+      )}
+
+      {editingAppt && (
+          <EditAppointmentModal 
+              appt={editingAppt} 
+              services={services}
+              onClose={() => setEditingAppt(null)} 
+              onSave={handleEditSave} 
+              isUpdating={updatingId === editingAppt.id} 
+          />
       )}
     </div>
   );
