@@ -55,7 +55,7 @@ const AdminBookings = () => {
     }
   };
 
-  const handleEditSave = async (id: string, newDate: string, newTime: string, newPayment: PaymentMethodType, newService?: any, newBarberId?: string) => {
+  const handleEditSave = async (id: string, newDate: string, newTime: string, newPayment: PaymentMethodType, newService?: any, newBarberId?: string, newStatus?: string) => {
       const appt = appointments.find(a => a.id === id);
       if (!appt) return;
 
@@ -64,7 +64,7 @@ const AdminBookings = () => {
 
       setUpdatingId(id);
       try {
-          await updateData(id, targetBarberId, newDate, newTime, newPayment, newService, targetBarberName);
+          await updateData(id, targetBarberId, newDate, newTime, newPayment, newService, targetBarberName, newStatus);
           setEditingAppt(null);
       } catch (error: any) {
           if (error.message === "HORA_OCUPADA") alert("Ese horario ya está ocupado.");
@@ -232,8 +232,8 @@ const AdminBookings = () => {
             )}
           </>
       ) : (
-          // LE PASAMOS LOS BARBEROS AL HISTORIAL
-          <AdminHistoryView pastAppointments={pastAppts} barbers={barbers} />
+          // LE PASAMOS LOS BARBEROS AL HISTORIAL Y LA FUNCIÓN DE EDICIÓN
+          <AdminHistoryView pastAppointments={pastAppts} barbers={barbers} onEdit={setEditingAppt} />
       )}
 
       {/* BOTÓN FLOTANTE CITA RÁPIDA GLOBAL */}

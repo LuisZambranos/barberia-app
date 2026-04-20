@@ -237,11 +237,75 @@ export default async function handler(req: any, res: any) {
     }
 
     // ==========================================
+    // 5. TAREA: AUTO-COMPLETAR CITAS VENCIDAS (DÍAS ANTERIORES)
+    // ==========================================
+    // Obtenemos la fecha de "hoy" en Santiago
+    const todayString = `${santiagoTime.getFullYear()}-${String(santiagoTime.getMonth() + 1).padStart(2, '0')}-${String(santiagoTime.getDate()).padStart(2, '0')}`;
+    
+    // Buscamos todas las citas que sigan "pending" o "confirmed"
+    const openApptsSnapshot = await appointmentsRef
+      .where("status", "in", ["pending", "confirmed"])
+      .get();
+
+    let autoCompletedCount = 0;
+
+    if (!openApptsSnapshot.empty) {
+      const apiUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}/api/sendEmail` 
+        : `http://127.0.0.1:3000/api/sendEmail`;
+
+      for (const doc of openApptsSnapshot.docs) {
+        const appt = doc.data();
+        
+        // Si la cita es de un día anterior a hoy
+        if (appt.date < todayString) {
+          
+          // 1. Actualizamos el estado a completed en Firestore
+          await doc.ref.update({ status: 'completed' });
+          
+          // 2. Si tiene clientId, actualizamos la fecha de última visita del usuario
+          if (appt.clientId) {
+            const userRef = db.collection("users").doc(appt.clientId);
+            await userRef.set({ lastVisitDate: new Date().toISOString() }, { merge: true });
+          }
+
+          // 3. Enviamos el correo de calificación si tiene email
+          if (appt.clientEmail) {
+            let barberPhone = '';
+            if (appt.barberId) {
+              const barberDoc = await db.collection("barbers").doc(appt.barberId).get();
+              if (barberDoc.exists) barberPhone = barberDoc.data()?.phone || '';
+            }
+
+            await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                to: appt.clientEmail, 
+                type: 'completed', // Dispara la plantilla de reseña
+                appointmentData: {
+                  clientName: appt.clientName,
+                  barberName: appt.barberName,
+                  date: appt.date,
+                  time: appt.time,
+                  serviceName: appt.serviceName,
+                  barberPhone: barberPhone
+                }
+              }),
+            });
+          }
+          
+          autoCompletedCount++;
+        }
+      }
+    }
+
+    // ==========================================
     // REPORTE FINAL
     // ==========================================
     return res.status(200).json({ 
         success: true, 
-        message: `Cron finalizado con éxito. Se barrieron ${deletedLocksCount} candados fantasma, se enviaron ${sentCount} correos de 15 días, ${reminder4hCount} recordatorios de 4 horas y ${reminder1hCount} recordatorios de 1 hora.` 
+        message: `Cron finalizado con éxito. Se barrieron ${deletedLocksCount} candados fantasma, se enviaron ${sentCount} correos de 15 días, ${reminder4hCount} recordatorios de 4h, ${reminder1hCount} recordatorios de 1h, y se auto-completaron ${autoCompletedCount} citas vencidas.` 
     });
 
   } catch (error) {

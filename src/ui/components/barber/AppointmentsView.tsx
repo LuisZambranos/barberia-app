@@ -58,10 +58,10 @@ const AppointmentsView = ({ barberId }: { barberId: string }) => {
     }
   };
 
-  const handleEditSave = async (id: string, newDate: string, newTime: string, newPayment: PaymentMethodType, newService?: any) => {
+  const handleEditSave = async (id: string, newDate: string, newTime: string, newPayment: PaymentMethodType, newService?: any, _newBarberId?: string, newStatus?: string) => {
       setUpdatingId(id);
       try {
-          await updateData(id, newDate, newTime, newPayment, newService);
+          await updateData(id, newDate, newTime, newPayment, newService, newStatus);
           setEditingAppt(null);
       } catch (error: any) {
           if (error.message === "HORA_OCUPADA") alert("Ese horario ya está ocupado por otra reserva.");

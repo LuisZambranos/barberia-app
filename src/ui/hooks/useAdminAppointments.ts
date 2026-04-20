@@ -60,8 +60,8 @@ export const useAdminAppointments = () => {
     const changeStatus = async (id: string, status: any) => updateAppointmentStatus(id, status);
     
     // updateData ahora requiere el barberId (lo sacaremos de la cita que se está editando en la UI)
-    const updateData = async (id: string, barberId: string, date: string, time: string, payment: PaymentMethodType, service?: Service, barberName?: string) => {
-        return updateAppointmentData(id, barberId, date, time, payment, service, barberName);
+    const updateData = async (id: string, barberId: string, date: string, time: string, payment: PaymentMethodType, service?: Service, barberName?: string, status?: string) => {
+        return updateAppointmentData(id, barberId, date, time, payment, service, barberName, status);
     };
     
     const removeAppointment = async (id: string) => deleteAppointment(id);

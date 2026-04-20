@@ -40,8 +40,9 @@ export const useAppointments = (barberId: string) => {
     await updateAppointmentStatus(appointmentId, newStatus);
   };
 
-  const updateData = async (appointmentId: string, newDate: string, newTime: string, newPaymentMethod: PaymentMethodType, newService?: Service) => {
-    await updateAppointmentData(appointmentId, barberId, newDate, newTime, newPaymentMethod, newService);
+  const updateData = async (appointmentId: string, newDate: string, newTime: string, newPaymentMethod: PaymentMethodType, newService?: Service, newStatus?: string) => {
+    // IMPORTANTE: Pasamos 'undefined' en barberName para que no lo modifique, y enviamos newStatus al final
+    await updateAppointmentData(appointmentId, barberId, newDate, newTime, newPaymentMethod, newService, undefined, newStatus);
   };
 
   const removeAppointment = async (appointmentId: string) => {

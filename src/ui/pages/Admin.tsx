@@ -3,9 +3,10 @@ import AdminBookings from "../components/admin/AdminBookings";
 import AdminSchedule from "../components/admin/AdminSchedule";
 import AdminBarbers from "../components/admin/AdminBarbers"; 
 import AdminGallery from "../components/admin/AdminGallery";
+import AdminClients from "../components/admin/AdminClients";
 
 const Admin = () => {
-  const [activeTab, setActiveTab] = useState<'bookings' | 'schedule' | 'barbers' | 'gallery'>('bookings'); 
+  const [activeTab, setActiveTab] = useState<'bookings' | 'schedule' | 'barbers' | 'gallery' | 'clients'>('bookings'); 
 
   return (
     <div className="min-h-screen bg-bg-main text-txt-main p-4 sm:p-8 pt-22 md:pt-24">
@@ -26,15 +27,17 @@ const Admin = () => {
         >
           Gestión de Citas
         </button>
+
+        {/* PESTAÑA: CLIENTES (CRM) */}
         <button 
-          onClick={() => setActiveTab('schedule')}
+          onClick={() => setActiveTab('clients')}
           className={`px-4 py-2 font-bold rounded-t-md transition-all whitespace-nowrap ${
-            activeTab === 'schedule' 
+            activeTab === 'clients' 
               ? 'text-gold border-b-2 border-gold bg-white/5' 
               : 'text-txt-muted hover:text-white hover:bg-white/5'
           }`}
         >
-          Horario Global
+          Clientes
         </button>
         
         {/* 3. NUEVA PESTAÑA: BARBEROS */}
@@ -49,6 +52,18 @@ const Admin = () => {
           Barberos y Staff
         </button>
 
+        {/* PESTAÑA: HORARIO GLOBAL */}
+        <button 
+          onClick={() => setActiveTab('schedule')}
+          className={`px-4 py-2 font-bold rounded-t-md transition-all whitespace-nowrap ${
+            activeTab === 'schedule' 
+              ? 'text-gold border-b-2 border-gold bg-white/5' 
+              : 'text-txt-muted hover:text-white hover:bg-white/5'
+          }`}
+        >
+          Horario Global
+        </button>
+
         {/* PESTAÑA: GALERÍA */}
         <button 
           onClick={() => setActiveTab('gallery')}
@@ -60,6 +75,7 @@ const Admin = () => {
         >
           Galería
         </button>
+
       </div>
 
       {/* 4. RENDERIZADO CONDICIONAL (Fondo corregido para contraste) */}
@@ -68,6 +84,7 @@ const Admin = () => {
         {activeTab === 'schedule' && <AdminSchedule />}
         {activeTab === 'barbers' && <AdminBarbers />} 
         {activeTab === 'gallery' && <AdminGallery />}
+        {activeTab === 'clients' && <AdminClients />}
       </div>
     </div>
   );
