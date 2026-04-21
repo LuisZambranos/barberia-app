@@ -124,11 +124,18 @@ const AdminBookings = () => {
   };
 
   // --- SEPARACIÓN DE DATOS (AGENDA VS HISTORIAL) ---
-  const activeAppts = filteredAppointments.filter(a => a.status !== 'completed' && a.status !== 'cancelled' && !isPastLocal(a.date, a.time));
-  const pastAppts = appointments.filter(a => (isPastLocal(a.date, a.time) && !isTodayLocal(a.date)) || a.status === 'completed' || a.status === 'cancelled');
+  // Todas las de hoy (para la vista de Gestión)
+  const allTodayAppts = filteredAppointments.filter(a => isTodayLocal(a.date));
+  
+  // Separar hoy en próximas y realizadas/pasadas
+  const todayUpcoming = allTodayAppts.filter(a => a.status !== 'completed' && a.status !== 'cancelled' && !isPastLocal(a.date, a.time));
+  const todayDone = allTodayAppts.filter(a => a.status === 'completed' || a.status === 'cancelled' || isPastLocal(a.date, a.time));
 
-  const todayPending = activeAppts.filter(a => isTodayLocal(a.date));
-  const futureAppts = activeAppts.filter(a => !isTodayLocal(a.date));
+  // Próximos días (no incluye hoy)
+  const futureAppts = filteredAppointments.filter(a => !isTodayLocal(a.date) && a.status !== 'completed' && a.status !== 'cancelled' && !isPastLocal(a.date, a.time));
+
+  // Historial (para la pestaña de Historial Finanzas)
+  const pastAppts = appointments.filter(a => (isPastLocal(a.date, a.time) && !isTodayLocal(a.date)) || a.status === 'completed' || a.status === 'cancelled');
 
   const groupedFuture = futureAppts.reduce((acc, appt) => {
       if (!acc[appt.date]) acc[appt.date] = [];
@@ -198,12 +205,46 @@ const AdminBookings = () => {
                         <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-2">
                             <Calendar className="text-gold" size={24} />
                             <h2 className="text-xl font-black text-white uppercase tracking-tight">Todas las Citas de Hoy</h2>
-                            <span className="bg-gold/20 text-gold text-xs font-bold px-2 py-1 rounded-full">{todayPending.length}</span>
+                            <span className="bg-gold/20 text-gold text-xs font-bold px-2 py-1 rounded-full">{allTodayAppts.length}</span>
                         </div>
-                        {todayPending.length === 0 ? <p className="text-txt-muted text-sm italic">La agenda está limpia por ahora.</p> : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-                                {/* LE PASAMOS LOS BARBEROS A LA TARJETA */}
-                                {todayPending.map(appt => <AdminAppointmentCard key={appt.id} appt={appt} barbers={barbers} copiedId={copiedId} updatingId={updatingId} openDropdownId={openDropdownId} {...cardActions} />)}
+                        
+                        {allTodayAppts.length === 0 ? <p className="text-txt-muted text-sm italic">La agenda está limpia por ahora.</p> : (
+                            <div className="space-y-10">
+                                {todayUpcoming.length > 0 && (
+                                    <div>
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="h-px bg-linear-to-r from-gold/40 to-transparent grow"></div>
+                                            <div className="bg-bg-main border border-gold/40 px-5 py-2 rounded-full shadow-[0_0_15px_rgba(212,175,55,0.15)] relative z-10">
+                                                <h3 className="text-gold font-black text-[10px] md:text-xs uppercase tracking-[0.2em] whitespace-nowrap flex items-center gap-2">
+                                                    Próximas Citas
+                                                </h3>
+                                            </div>
+                                            <div className="h-px bg-linear-to-l from-gold/40 to-transparent grow"></div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+                                            {todayUpcoming.map(appt => <AdminAppointmentCard key={appt.id} appt={appt} barbers={barbers} copiedId={copiedId} updatingId={updatingId} openDropdownId={openDropdownId} {...cardActions} />)}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {todayDone.length > 0 && (
+                                    <div className="pt-4">
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="h-px bg-linear-to-r from-white/10 to-transparent grow"></div>
+                                            <div className="bg-bg-main border border-white/20 px-5 py-2 rounded-full relative z-10">
+                                                <h3 className="text-txt-muted font-black text-[10px] md:text-xs uppercase tracking-[0.2em] whitespace-nowrap">
+                                                    Citas del Día
+                                                </h3>
+                                            </div>
+                                            <div className="h-px bg-linear-to-l from-white/10 to-transparent grow"></div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch transition-all duration-500">
+                                            {todayDone.sort((a, b) => b.time.localeCompare(a.time)).map(appt => (
+                                                <AdminAppointmentCard key={appt.id} appt={appt} barbers={barbers} copiedId={copiedId} updatingId={updatingId} openDropdownId={openDropdownId} {...cardActions} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </section>
