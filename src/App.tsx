@@ -11,6 +11,7 @@ import Admin from "./ui/pages/Admin";
 import BarberPage from "./ui/pages/BarberPage";
 import NotFound from "./ui/pages/NotFound";
 import MyAppointments from "./ui/pages/MyAppointments";
+import Privacy from "./ui/pages/Privacy";
 import NotificationController from './ui/components/NotificationController';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
                 {/* Rutas Públicas */}
                 <Route path="/" element={<Home />}/>
                 <Route path="login" element={<Login />}/>
+                <Route path="privacy" element={<Privacy />}/>
                 
                 {/* Rutas Protegidas */}
                 <Route element={<ProtectedRoute allowedRoles={['client', 'admin', 'barber']} />}>

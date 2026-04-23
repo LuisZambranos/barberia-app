@@ -94,8 +94,9 @@ const Footer = () => {
 
         {/* Línea Separadora y Copyright */}
         <div className="border-t border-txt-muted/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-txt-muted">
-            &copy; {currentYear} A&J Studio. Todos los derechos reservados.
+          <p className="text-xs text-txt-muted flex gap-4">
+            <span>&copy; {currentYear} A&J Studio. Todos los derechos reservados.</span>
+            <Link to="/privacy" className="hover:text-gold transition-colors">Privacidad</Link>
           </p>
           
           <p className="text-[10px] text-txt-secondary tracking-widest uppercase flex items-center gap-1">
