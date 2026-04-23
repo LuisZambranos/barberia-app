@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /barber
 
-Sitemap: https://ajstudio.vercel.app/sitemap.xml
+Sitemap: https://ajstudio.cl/sitemap.xml

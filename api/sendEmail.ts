@@ -236,7 +236,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           <p>Si deseas reagendar, escríbele a tu barbero o agenda nuevamente en la web.</p>
           ${wsButtonHTML}
           <div style="text-align: center; margin-top: 15px;">
-            <a href="https://ajstudio.vercel.app/book" class="btn btn-gold">Agendar Nueva Cita</a>
+            <a href="https://ajstudio.cl/book" class="btn btn-gold">Agendar Nueva Cita</a>
           </div>
         `;
         htmlContent = buildHTML(bodyContent);
@@ -289,7 +289,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           <p>Notamos que han pasado un par de semanas desde tu última visita a nuestra barbería.</p>
           <p>¿Ya es hora de un retoque? Mantén tu estilo impecable agendando una nueva cita con nosotros, los barberos te están esperando.</p>
           <div style="text-align: center; margin-top: 25px;">
-            <a href="https://ajstudio.vercel.app/book" class="btn btn-gold">Reservar Nueva Cita</a>
+            <a href="https://ajstudio.cl/book" class="btn btn-gold">Reservar Nueva Cita</a>
           </div>
         `;
         htmlContent = buildHTML(bodyContent);
